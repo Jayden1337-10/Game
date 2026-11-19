@@ -6,11 +6,12 @@ extends Node
 const RPC_SCRIPT = preload("res://addons/discord_rich_presence/discord_rich_presence.gd")
 
 var rpc_node: Node
-var session_started_at: int = int(Time.get_unix_time_from_system())
+var session_started_at: int = 0
 var current_biome := "Forest"
 var current_world := "Solo World"
 
 func _ready() -> void:
+    session_started_at = int(Time.get_unix_time_from_system())
     var application_id := str(ProjectSettings.get_setting("discord/application_id", "")).strip_edges()
     if application_id.is_empty():
         return
