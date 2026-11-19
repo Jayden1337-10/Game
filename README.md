@@ -5,8 +5,8 @@ A Terraria-inspired 2D sandbox RPG prototype built with Godot 4 and a Flask acco
 ## Repository
 - `game/`: Godot client.
 - `server/`: Flask API, SQLite/PostgreSQL persistence and automated tests.
-- `executor-demo/`: opt-in account-scoped moderation demonstration.
-- `.github/workflows/`: backend regression tests and Windows export checks.
+- `executor-demo/`: opt-in, harmless executor-style visual simulator.
+- `.github/workflows/ci.yml`: backend regression tests and Windows executable builds.
 
 ## Gameplay
 - Six procedural biomes: Forest, Mushroom Fields, Crystal Caverns, Frostreach, Ashlands and Sunken Ruins.
@@ -30,7 +30,7 @@ A Terraria-inspired 2D sandbox RPG prototype built with Godot 4 and a Flask acco
 - M: local cosmetic crafting stall.
 - Q: adventurer journal and quest progress.
 - U: account, persistent wallet, online cosmetic shop and world-sharing panel.
-- F2: developer grant panel (only appears for usernames listed in the server environment variable `DEV_ADMIN_USERNAMES`).
+- F2: administrator test-grant panel (available to the configured admin account).
 
 ## Run the account server
 Local development:
@@ -46,7 +46,7 @@ Wispbyte startup command:
 pip install -U --prefix .local -r server/requirements.txt
 /usr/local/bin/python /home/container/server/app.py
 ```
-Set `PORT`, `SECRET_KEY`, and `DATABASE_URL` in the Wispbyte environment panel. Add `DEV_ADMIN_USERNAMES` with your Forgotten World account username to enable the developer panel for that account only. For example, `DEV_ADMIN_USERNAMES=your_username`. Multiple usernames can be comma-separated. Leave it unset to disable developer grants. The application initializes its schema on import, so Gunicorn can also load `app:app` from the server directory.
+Set `PORT`, `SECRET_KEY`, and `DATABASE_URL` in the Wispbyte environment panel. To bootstrap the administrator account, set `ADMIN_USERNAME=admin1337` and set `ADMIN_PASSWORD` to the password you chose in the private environment settings. The server stores only a password hash. Do not put the password in GitHub, source files, screenshots, or chat logs. The admin username is automatically allowed to use the in-game F2 test-grant panel. Additional developer usernames can optionally be listed in `DEV_ADMIN_USERNAMES`. The application initializes its schema on import, so Gunicorn can also load `app:app` from the server directory.
 
 ## Accounts and persistent economy
 - Register and log in from the in-game panel (U).
@@ -60,9 +60,15 @@ Set `PORT`, `SECRET_KEY`, and `DATABASE_URL` in the Wispbyte environment panel. 
 
 Online enemy rewards update the account wallet; offline play uses the local save's coin balance. The online shop is persistent and separate from the local crafting stall.
 
-## Developer test panel
+## Administrator account
 
-The F2 panel is an owner-authorized testing tool, not an exploit against other games or players. It can grant the signed-in allowlisted account up to 999 of a selected material per request, up to 100,000 coins per request, and unlock a cosmetic. Grants are authenticated and checked by the Flask server. Item quantities are stored in the account database and applied to the local game inventory when the client receives the grant. Do not put this allowlist in a client config; set it only in the hosting provider's private environment variables. Remove the username from `DEV_ADMIN_USERNAMES` to revoke access.
+The server can bootstrap `admin1337` when `ADMIN_USERNAME` and `ADMIN_PASSWORD` are set in the host's private environment variables. The password is hashed before it is stored. The admin account can use the in-game F2 test-grant panel and clear reversible demo test bans through `POST /api/admin/demo-unban` with a `user_id`. Never commit the password or a production `SECRET_KEY` to this repository.
+
+## Executor-style demo
+
+The separate `ForgottenWorld-Executor-Demo.exe` is an opt-in visual simulator. It does not inject into processes, execute user-supplied scripts, modify another game, or inspect the computer. The user signs into their Forgotten World account and explicitly confirms before the 15-minute server-side timer begins. When the timer ends, the server applies a reversible demo-only account lock. The configured admin account can clear it. Closing and reopening the app does not reset an existing session; the server timestamp is authoritative.
+
+The demo executable and game executable are built by GitHub Actions. Open the repository's Actions tab, select the latest successful `Forgotten World CI` run, and download the `forgotten-world-windows-builds` artifact.
 
 ## Shared worlds
 - Create a world and invite code in the in-game U panel.
@@ -73,9 +79,9 @@ The F2 panel is an owner-authorized testing tool, not an exploit against other g
 This is a small polling-based multiplayer prototype, not a production authoritative game server. Enemy health, combat outcomes, and anti-cheat validation are not yet authoritative or synchronised. Avoid treating it as secure against modified clients.
 
 ## Automated checks
-- Backend tests cover registration/login, auth requirements, daily currency, capped rewards, cosmetic purchases/equipping, world invites, shared saves and event delivery.
-- GitHub Actions runs the backend tests and a Godot Windows export check on pushes.
-- A successful backend test run has been observed. The Windows export must complete successfully before a tested executable can be claimed.
+- GitHub Actions runs the backend tests and builds both Windows executables on pushes and pull requests.
+- Downloadable Windows builds are attached to successful workflow runs as the `forgotten-world-windows-builds` artifact.
+- Do not consider a build ready until the workflow is green.
 
 ## Discord Rich Presence
 
