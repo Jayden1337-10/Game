@@ -70,3 +70,10 @@ func send_world_event(world_id: String, event_data: Dictionary) -> void:
 
 func poll_world_events(world_id: String, after_cursor: String = "") -> void:
     request_api("/api/worlds/" + world_id + "/events?after=" + after_cursor.uri_encode())
+
+
+func load_dev_status() -> void:
+    request_api("/api/dev/status")
+
+func dev_grant(item_id: String, quantity: int, coin_amount: int, cosmetic_id: String = "") -> void:
+    request_api("/api/dev/grant", HTTPClient.METHOD_POST, {"item_id": item_id, "quantity": quantity, "coins": coin_amount, "cosmetic_id": cosmetic_id})
