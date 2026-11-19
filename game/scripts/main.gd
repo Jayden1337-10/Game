@@ -11,7 +11,7 @@ var player_pos := Vector2(420, 260)
 var velocity := Vector2.ZERO
 var camera_offset := Vector2.ZERO
 var blocks: Dictionary = {}
-var inventory := {"grass": 0, "dirt": 24, "stone": 0, "wood": 0, "gel": 0, "copper": 0, "crystal": 0, "ice": 0, "sand": 0, "relic": 0, "herb": 0}
+var inventory := {"grass": 0, "dirt": 24, "stone": 0, "wood": 0, "gel": 0, "copper": 0, "crystal": 0, "ice": 0, "sand": 0, "relic": 0, "herb": 0, "rune": 0}
 var equipment := {"weapon": "Wooden Sword", "head": "None", "chest": "Cloth Tunic", "legs": "None", "accessory": "None"}
 var recipes := {
     "Wooden Sword": {"wood": 8},
@@ -38,13 +38,14 @@ var show_inventory := false
 var show_cosmetics := false
 var show_quests := false
 var visited_biomes: Dictionary = {}
-var quest_progress := {"wood": 0, "crystal": 0, "relic": 0, "biomes": 0}
+var quest_progress := {"wood": 0, "crystal": 0, "relic": 0, "biomes": 0, "runes": 0}
 var quest_claimed: Dictionary = {}
 var quest_definitions := {
     "woodcutter": {"label": "Helpful Hands", "goal": "wood", "target": 20, "reward": 30, "description": "Gather 20 wood"},
     "crystal_seeker": {"label": "Bright Discoveries", "goal": "crystal", "target": 12, "reward": 45, "description": "Gather 12 crystals"},
     "relic_hunter": {"label": "Lost History", "goal": "relic", "target": 8, "reward": 75, "description": "Find 8 ancient relics"},
-    "wanderer": {"label": "World Wanderer", "goal": "biomes", "target": 5, "reward": 100, "description": "Visit 5 different biomes"}
+    "wanderer": {"label": "World Wanderer", "goal": "biomes", "target": 5, "reward": 100, "description": "Visit 5 different biomes"},
+    "guardian_trial": {"label": "Ancient Guardian Trial", "goal": "runes", "target": 3, "reward": 150, "description": "Recover three ancient runes"}
 }
 var owned_cosmetics := ["None"]
 var equipped_cosmetic := "None"
@@ -155,8 +156,8 @@ func _make_ruin(x: int, y: int) -> void:
             for dy in range(1, 5):
                 blocks[Vector2i(x + dx, y + dy)] = "ancient_brick"
     blocks[Vector2i(x, y - 1)] = "relic"
-    blocks[Vector2i(x - 2, y - 1)] = "herb"
-    blocks[Vector2i(x + 2, y - 1)] = "herb"
+    blocks[Vector2i(x - 2, y - 1)] = "rune"
+    blocks[Vector2i(x + 2, y - 1)] = "rune"
 
 func _spawn_enemies() -> void:
     var rng := RandomNumberGenerator.new()
@@ -385,6 +386,7 @@ func _draw() -> void:
             elif kind == "sand": color = Color("#d4bb78")
             elif kind == "relic": color = Color("#d7a94e")
             elif kind == "ancient_brick": color = Color("#8c8068")
+            elif kind == "rune": color = Color("#7de0d0")
             elif kind == "herb": color = Color("#83b96c")
             if cell.x >= 140 and cell.x < 280 and kind == "grass": color = Color("#739b70")
             if cell.x >= 280 and kind == "grass": color = Color("#a27b62")
@@ -469,6 +471,7 @@ func _record_gather(kind: String) -> void:
     if kind == "wood": quest_key = "wood"
     elif kind == "crystal": quest_key = "crystal"
     elif kind == "relic": quest_key = "relic"
+    elif kind == "rune": quest_key = "runes"
     if quest_key.is_empty():
         return
     quest_progress[quest_key] = int(quest_progress.get(quest_key, 0)) + 1
