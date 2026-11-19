@@ -34,3 +34,7 @@ A planned client integration will use a compatible Godot Discord RPC extension. 
 
 ## Account safety
 Bans affect only Forgotten World accounts. The demo executor is opt-in and should be tested with a disposable account. It does not inspect other processes, collect credentials, modify Windows, or affect Discord accounts.
+
+
+## Executor demonstration client
+Run `python executor-demo/client.py` on Windows with Python 3. It uses the API URL and credentials you enter to start a 180-second demonstration. When it completes, the API permanently bans only that signed-in Forgotten World account. Test with a disposable account. The demo client is not an exploit and does not inject code into the game.
