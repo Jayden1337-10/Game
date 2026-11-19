@@ -39,7 +39,7 @@ func _run_smoke_test() -> void:
         push_error("Biome progression boundaries are incorrect")
         quit(1)
         return
-    if instance.quest_definitions.size() < 4:
+    if instance.quest_definitions.size() < 5:
         push_error("Exploration quest catalogue is incomplete")
         quit(1)
         return
@@ -47,6 +47,12 @@ func _run_smoke_test() -> void:
         instance._record_gather("crystal")
     if not instance.quest_claimed.get("crystal_seeker", false) or instance.coins != 45:
         push_error("Quest reward progression failed")
+        quit(1)
+        return
+    for i in range(3):
+        instance._record_gather("rune")
+    if not instance.quest_claimed.get("guardian_trial", false) or instance.coins != 195:
+        push_error("Ancient Guardian trial reward failed")
         quit(1)
         return
     print("Forgotten World smoke test passed")
