@@ -79,7 +79,7 @@ func update_discord_presence() -> void:
     var world_label := "Solo World"
     var account_ui := get_node_or_null("AccountUI")
     if account_ui != null and not str(account_ui.active_world_name).is_empty():
-        world_label = str(account_ui.active_world_name)
+        world_label = str(account_ui.get("active_world_name"))
     presence.call("update_presence", biome, world_label)
 
 func _generate_world() -> void:
