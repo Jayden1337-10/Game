@@ -30,6 +30,7 @@ A Terraria-inspired 2D sandbox RPG prototype built with Godot 4 and a Flask acco
 - M: local cosmetic crafting stall.
 - Q: adventurer journal and quest progress.
 - U: account, persistent wallet, online cosmetic shop and world-sharing panel.
+- F2: developer grant panel (only appears for usernames listed in the server environment variable `DEV_ADMIN_USERNAMES`).
 
 ## Run the account server
 Local development:
@@ -45,7 +46,7 @@ Wispbyte startup command:
 pip install -U --prefix .local -r server/requirements.txt
 /usr/local/bin/python /home/container/server/app.py
 ```
-Set `PORT`, `SECRET_KEY`, and `DATABASE_URL` in the Wispbyte environment panel. The application initializes its schema on import, so Gunicorn can also load `app:app` from the server directory.
+Set `PORT`, `SECRET_KEY`, and `DATABASE_URL` in the Wispbyte environment panel. Add `DEV_ADMIN_USERNAMES` with your Forgotten World account username to enable the developer panel for that account only. For example, `DEV_ADMIN_USERNAMES=your_username`. Multiple usernames can be comma-separated. Leave it unset to disable developer grants. The application initializes its schema on import, so Gunicorn can also load `app:app` from the server directory.
 
 ## Accounts and persistent economy
 - Register and log in from the in-game panel (U).
@@ -58,6 +59,10 @@ Set `PORT`, `SECRET_KEY`, and `DATABASE_URL` in the Wispbyte environment panel. 
 - `POST /api/currency/reward`: claim a fixed 5-coin slime defeat reward, with duplicate protection and a 200-coin daily gameplay reward cap.
 
 Online enemy rewards update the account wallet; offline play uses the local save's coin balance. The online shop is persistent and separate from the local crafting stall.
+
+## Developer test panel
+
+The F2 panel is an owner-authorized testing tool, not an exploit against other games or players. It can grant the signed-in allowlisted account up to 999 of a selected material per request, up to 100,000 coins per request, and unlock a cosmetic. Grants are authenticated and checked by the Flask server. Item quantities are stored in the account database and applied to the local game inventory when the client receives the grant. Do not put this allowlist in a client config; set it only in the hosting provider's private environment variables. Remove the username from `DEV_ADMIN_USERNAMES` to revoke access.
 
 ## Shared worlds
 - Create a world and invite code in the in-game U panel.
