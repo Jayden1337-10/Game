@@ -402,10 +402,7 @@ func _build_dev_panel() -> void:
     body.add_child(demo_unban_input)
     var unban_button := Button.new()
     unban_button.text = "Clear demo test ban"
-    unban_button.pressed.connect(func():
-        if dev_access and not demo_unban_input.text.strip_edges().is_empty():
-            api.admin_clear_demo_ban(demo_unban_input.text.strip_edges())
-    )
+    unban_button.pressed.connect(_clear_demo_ban)
     body.add_child(unban_button)
 
 func _dev_label(value: String) -> Label:
@@ -424,3 +421,13 @@ func _submit_dev_grant() -> void:
 func _input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F2 and dev_access:
         dev_panel.visible = not dev_panel.visible
+
+func _clear_demo_ban() -> void:
+    if not dev_access or api.auth_token.is_empty():
+        dev_status_label.text = "Administrator access is not enabled"
+        return
+    var target_username := demo_unban_input.text.strip_edges()
+    if target_username.is_empty():
+        dev_status_label.text = "Enter the username to unban"
+        return
+    api.admin_clear_demo_ban(target_username)
