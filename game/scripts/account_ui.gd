@@ -45,7 +45,6 @@ func _ready() -> void:
             api.load_profile()
             api.load_cosmetic_shop()
             api.load_dev_status()
-            api.load_dev_status()
 
 func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_U:
@@ -206,6 +205,7 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
             status_label.text = "Signed in as " + str(data.get("user", {}).get("username", "player"))
             api.load_profile()
             api.load_cosmetic_shop()
+            api.load_dev_status()
         else:
             status_label.text = str(data.get("error", "Account request failed"))
     elif path == "/api/profile":
