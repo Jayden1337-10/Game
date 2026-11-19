@@ -217,11 +217,19 @@ def admin_demo_unban():
     if not u:return jsonify(error="Authentication required"),401
     admin_name=os.getenv("ADMIN_USERNAME","admin1337").strip().casefold()
     if u["username"].casefold()!=admin_name:return jsonify(error="Administrator access required"),403
-    target_id=str((request.get_json(silent=True) or {}).get("user_id","")).strip()
-    if not target_id:return jsonify(error="user_id is required"),400
+    body=request.get_json(silent=True) or {}
+    target_id=str(body.get("user_id","")).strip()
+    target_username=str(body.get("username","")).strip()
+    if not target_id and target_username:
+        with db() as c:
+            cur=c.cursor(); cur.execute(sql("SELECT id FROM users WHERE username=?"),(target_username,))
+            target=asdict(cur.fetchone())
+            target_id=target["id"] if target else ""
+    if not target_id:return jsonify(error="A valid user_id or username is required"),400
     with db() as c:
         cur=c.cursor(); cur.execute(sql("DELETE FROM demo_bans WHERE user_id=?"),(target_id,))
-    return jsonify(ok=True,cleared=cur.rowcount>0)
+        cleared=cur.rowcount>0
+    return jsonify(ok=True,cleared=cleared)
 
 
 
