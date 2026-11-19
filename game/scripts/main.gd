@@ -337,7 +337,7 @@ func _draw() -> void:
     draw_string(ThemeDB.fallback_font, Vector2(32, 70), "HP %d   Coins %d   Weapon: %s" % [player_health, coins, equipment["weapon"]], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
     draw_string(ThemeDB.fallback_font, Vector2(32, 96), "Dirt %d  Stone %d  Wood %d  Copper %d  Gel %d" % [inventory.dirt, inventory.stone, inventory.wood, inventory.copper, inventory.gel], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#d5dfdc"))
     draw_string(ThemeDB.fallback_font, Vector2(32, 122), status_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#c8d6df"))
-    draw_string(ThemeDB.fallback_font, Vector2(32, 145), "Cosmetic: " + equipped_cosmetic + " | C craft | I inventory | M cosmetics", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#f0d59b"))
+    draw_string(ThemeDB.fallback_font, Vector2(32, 145), "Cosmetic: " + visual_cosmetic + " | C craft | I inventory | M cosmetics", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#f0d59b"))
     for i in range(hotbar.size()):
         var x := 32 + i * 48
         draw_rect(Rect2(Vector2(x, view.y - 66), Vector2(42, 42)), Color("#3a4146") if i != selected_slot else Color("#d2ae61"))
