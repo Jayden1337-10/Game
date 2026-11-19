@@ -24,13 +24,13 @@ Set `DATABASE_URL` for PostgreSQL in production. Local development uses SQLite i
 
 ## Wispbyte startup command
 ```bash
-pip install -U --prefix .local -r requirements.txt
-/usr/local/bin/python /home/container/app.py
+pip install -U --prefix .local -r server/requirements.txt
+/usr/local/bin/python /home/container/server/app.py
 ```
 Configure `PORT`, `SECRET_KEY`, and `DATABASE_URL` in the Wispbyte environment panel.
 
 ## Discord Rich Presence
-The client includes an integration stub. Actual Rich Presence needs a compatible Godot Discord RPC extension and a registered Discord application ID.
+A planned client integration will use a compatible Godot Discord RPC extension. Actual Rich Presence needs a compatible Godot Discord RPC extension and a registered Discord application ID.
 
 ## Account safety
 Bans affect only Forgotten World accounts. The demo executor is opt-in and should be tested with a disposable account. It does not inspect other processes, collect credentials, modify Windows, or affect Discord accounts.
