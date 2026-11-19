@@ -54,6 +54,7 @@ func _ready() -> void:
     var account_ui = get_node_or_null("AccountUI")
     if account_ui != null:
         account_ui.world_event_received.connect(_on_world_event)
+        account_ui.world_loaded.connect(_apply_shared_world)
     queue_redraw()
 
 func _generate_world() -> void:
@@ -135,6 +136,13 @@ func _physics_process(delta: float) -> void:
 
 func _on_world_event(event_data: Dictionary) -> void:
     var payload: Dictionary = event_data.get("event", {})
+    if payload.get("type", "") == "tile_update":
+        var cell := Vector2i(int(payload.get("x", 0)), int(payload.get("y", 0)))
+        if payload.get("remove", false):
+            blocks.erase(cell)
+        else:
+            blocks[cell] = str(payload.get("kind", "dirt"))
+        return
     if payload.get("type", "") != "player_state":
         return
     var remote_id := str(event_data.get("user_id", ""))
@@ -181,12 +189,18 @@ func _unhandled_input(event: InputEvent) -> void:
                 blocks.erase(cell)
                 inventory[kind] = inventory.get(kind, 0) + 1
                 if kind == "wood": coins += 1
+                var account_ui = get_node_or_null("AccountUI")
+                if account_ui != null:
+                    account_ui.broadcast_world_event({"type": "tile_update", "x": cell.x, "y": cell.y, "remove": true})
                 status_text = "Mined " + kind
         elif event.button_index == MOUSE_BUTTON_RIGHT:
             var kind: String = hotbar[selected_slot]
             if not blocks.has(cell) and Vector2(cell * TILE).distance_to(player_pos) < 150.0 and inventory.get(kind, 0) > 0:
                 blocks[cell] = kind
                 inventory[kind] -= 1
+                var account_ui = get_node_or_null("AccountUI")
+                if account_ui != null:
+                    account_ui.broadcast_world_event({"type": "tile_update", "x": cell.x, "y": cell.y, "kind": kind, "remove": false})
                 status_text = "Placed " + kind
         queue_redraw()
 
@@ -404,3 +418,22 @@ func _load_game() -> bool:
             enemies.append({"pos": Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0))), "hp": int(entry.get("hp", 35)), "speed": float(entry.get("speed", 35.0)), "kind": str(entry.get("kind", "Slime"))})
     status_text = "World loaded"
     return true
+
+
+func _serialize_world() -> Dictionary:
+    var saved_blocks: Array = []
+    for cell in blocks:
+        saved_blocks.append([cell.x, cell.y, str(blocks[cell])])
+    return {"version": 1, "seed": world_seed, "blocks": saved_blocks}
+
+func _apply_shared_world(data: Dictionary) -> void:
+    if int(data.get("version", 0)) != 1:
+        status_text = "Shared world version is unsupported"
+        return
+    world_seed = int(data.get("seed", world_seed))
+    blocks.clear()
+    for entry in data.get("blocks", []):
+        if entry is Array and entry.size() >= 3:
+            blocks[Vector2i(int(entry[0]), int(entry[1]))] = str(entry[2])
+    status_text = "Shared world loaded"
+    queue_redraw()
