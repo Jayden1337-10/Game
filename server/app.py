@@ -37,6 +37,7 @@ def init_db():
     "CREATE TABLE IF NOT EXISTS owned_cosmetics (user_id TEXT NOT NULL, cosmetic_id TEXT NOT NULL, PRIMARY KEY(user_id,cosmetic_id))",
     "CREATE TABLE IF NOT EXISTS equipped_cosmetics (user_id TEXT PRIMARY KEY, cosmetic_id TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS daily_claims (user_id TEXT NOT NULL, claim_date TEXT NOT NULL, PRIMARY KEY(user_id,claim_date))",
+    "CREATE TABLE IF NOT EXISTS currency_ledger (reward_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, amount INTEGER NOT NULL, source TEXT NOT NULL, created_at TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS world_invites (code TEXT PRIMARY KEY, world_id TEXT NOT NULL, owner_id TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS world_members (world_id TEXT NOT NULL, user_id TEXT NOT NULL, PRIMARY KEY(world_id,user_id))",
     "CREATE TABLE IF NOT EXISTS world_events (id TEXT PRIMARY KEY, world_id TEXT NOT NULL, user_id TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL)"]
@@ -260,6 +261,34 @@ def daily_currency():
             cur.execute(sql("UPDATE wallets SET coins=coins+100 WHERE user_id=?"),(u["id"],))
             balance=wallet["coins"]+100
     return jsonify(ok=True,reward=100,coins=balance)
+
+
+@app.post("/api/currency/reward")
+def currency_reward():
+    u,e=player()
+    if e:return e
+    body=request.get_json(silent=True) or {}
+    reward_id=str(body.get("reward_id","")).strip()
+    source=str(body.get("source",""))
+    rewards={"slime_kill":5}
+    if not 8<=len(reward_id)<=80:return jsonify(error="Invalid reward identifier"),400
+    if source not in rewards:return jsonify(error="Unknown reward source"),400
+    amount=rewards[source]
+    today=datetime.now(timezone.utc).date().isoformat()
+    start=today+"T00:00:00"
+    now=datetime.now(timezone.utc).isoformat()
+    with db() as c:
+        cur=c.cursor()
+        cur.execute(sql("SELECT reward_id FROM currency_ledger WHERE reward_id=?"),(reward_id,))
+        if cur.fetchone():return jsonify(error="Reward already processed"),409
+        cur.execute(sql("SELECT COALESCE(SUM(amount),0) AS total FROM currency_ledger WHERE user_id=? AND created_at>=?"),(u["id"],start))
+        earned=int(asdict(cur.fetchone())["total"])
+        if earned+amount>200:return jsonify(error="Daily gameplay coin limit reached",daily_limit=200),429
+        cur.execute(sql("INSERT INTO currency_ledger (reward_id,user_id,amount,source,created_at) VALUES (?,?,?,?,?)"),(reward_id,u["id"],amount,source,now))
+        cur.execute(sql("INSERT INTO wallets (user_id,coins) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET coins=wallets.coins+excluded.coins"),(u["id"],amount))
+        cur.execute(sql("SELECT coins FROM wallets WHERE user_id=?"),(u["id"],))
+        balance=int(asdict(cur.fetchone())["coins"])
+    return jsonify(ok=True,reward=amount,coins=balance),200
 
 
 # Lightweight polling-based multiplayer relay. Clients poll events after their last cursor.
