@@ -41,7 +41,7 @@ class ExecutorDemo:
 
     def request(self,path,data,token=None):
         body=json.dumps(data).encode()
-        req=urllib.request.Request(self.server.get().rstrip("/")+"/api/"+path,data=body,headers={"Content-Type":"application/json"})
+        req=urllib.request.Request(self.base_url+"/api/"+path,data=body,headers={"Content-Type":"application/json"})
         if token: req.add_header("Authorization","Bearer "+token)
         try:
             with urllib.request.urlopen(req,timeout=12) as response:
@@ -53,13 +53,19 @@ class ExecutorDemo:
 
     def start(self):
         if self.running:return
+        self.base_url=self.server.get().strip().rstrip("/")
+        self.login_name=self.username.get().strip()
+        self.login_password=self.password.get()
+        if not self.base_url.startswith(("http://","https://")):
+            self.failed("Enter a valid http:// or https:// server URL")
+            return
         self.button.config(state="disabled")
         self.status.config(text="Connecting to Forgotten World...")
         threading.Thread(target=self._begin,daemon=True).start()
 
     def _begin(self):
         try:
-            auth=self.request("login",{"username":self.username.get().strip(),"password":self.password.get()})
+            auth=self.request("login",{"username":self.login_name,"password":self.login_password})
             token=auth["token"]
             result=self.request("demo-exploit/start",{},token)
             self.token=token
@@ -69,7 +75,7 @@ class ExecutorDemo:
             self.root.after(0,lambda:self.status.config(text="Injection simulated. Detection window active..."))
             self.root.after(0,self.tick)
         except Exception as exc:
-            self.root.after(0,lambda:self.failed(str(exc)))
+            self.root.after(0,lambda message=str(exc):self.failed(message))
 
     def failed(self,message):
         self.status.config(text="Connection failed: "+message)
