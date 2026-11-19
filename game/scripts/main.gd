@@ -38,6 +38,8 @@ var show_inventory := false
 var show_cosmetics := false
 var owned_cosmetics := ["None"]
 var equipped_cosmetic := "None"
+var account_owned_cosmetics: Array = []
+var account_equipped_cosmetic := "None"
 var cosmetic_prices := {"Forest Cape": 35, "Royal Crown": 90, "Slime Buddy": 70}
 var cosmetic_recipes := {"Leaf Crown": {"leaves": 12, "wood": 2}, "Wooden Mask": {"wood": 8}, "Slime Hat": {"gel": 6}}
 var player_health := 100
@@ -321,12 +323,13 @@ func _draw() -> void:
         draw_rect(Rect2(ep - Vector2(7, 3), Vector2(4, 4)), Color("#17251b"))
         draw_rect(Rect2(ep + Vector2(3, -3), Vector2(4, 4)), Color("#17251b"))
     var p := player_pos - camera_offset
+    var visual_cosmetic := account_equipped_cosmetic if account_equipped_cosmetic != "None" else equipped_cosmetic
     draw_rect(Rect2(p - Vector2(10, 24), Vector2(20, 36)), Color("#e8c18a"))
-    if equipped_cosmetic.find("Cape") >= 0:
+    if visual_cosmetic.find("Cape") >= 0:
         draw_rect(Rect2(p + Vector2(-14, -12), Vector2(7, 30)), Color("#397a55"))
-    elif equipped_cosmetic.find("Crown") >= 0 or equipped_cosmetic.find("Hat") >= 0:
+    elif visual_cosmetic.find("Crown") >= 0 or visual_cosmetic.find("Hat") >= 0:
         draw_rect(Rect2(p + Vector2(-8, -29), Vector2(16, 6)), Color("#d9b34f"))
-    elif equipped_cosmetic == "Slime Buddy":
+    elif visual_cosmetic == "Slime Buddy":
         draw_rect(Rect2(p + Vector2(18, 2), Vector2(13, 12)), Color("#65c95c"))
     draw_rect(Rect2(p - Vector2(11, -5), Vector2(22, 9)), Color("#463b32"))
     draw_rect(Rect2(Vector2(18, 18), Vector2(510, 140)), Color(0.04, 0.06, 0.08, 0.82))
