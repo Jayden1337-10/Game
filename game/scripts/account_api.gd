@@ -46,6 +46,9 @@ func equip_cosmetic(cosmetic_id: String) -> void:
 func claim_daily_coins() -> void:
     request_api("/api/currency/daily", HTTPClient.METHOD_POST, {})
 
+func claim_enemy_reward(reward_id: String) -> void:
+    request_api("/api/currency/reward", HTTPClient.METHOD_POST, {"reward_id": reward_id, "source": "slime_kill"})
+
 func create_world(world_name: String, hosting: String = "dedicated") -> void:
     request_api("/api/worlds", HTTPClient.METHOD_POST, {"name": world_name, "hosting": hosting})
 
