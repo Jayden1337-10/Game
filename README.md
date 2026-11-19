@@ -62,7 +62,7 @@ Online enemy rewards update the account wallet; offline play uses the local save
 
 ## Administrator account
 
-The server can bootstrap `admin1337` when `ADMIN_USERNAME` and `ADMIN_PASSWORD` are set in the host's private environment variables. The password is hashed before it is stored. The admin account can use the in-game F2 test-grant panel and clear reversible demo test bans through `POST /api/admin/demo-unban` with a `user_id`. Never commit the password or a production `SECRET_KEY` to this repository.
+The server can bootstrap `admin1337` when `ADMIN_USERNAME` and `ADMIN_PASSWORD` are set in the host's private environment variables. The password is hashed before it is stored. The admin account can use the in-game F2 test-grant panel and clear reversible demo test bans through `POST /api/admin/demo-unban` with a `username` or `user_id`. Never commit the password or a production `SECRET_KEY` to this repository.
 
 ## Executor-style demo
 
@@ -113,5 +113,3 @@ No image assets are required. If you want a quick opt-out, set
 `enabled=false`. The game does not publish account names, invite codes,
 chat messages, or authentication details to Discord.
 
-## Demo client
-The opt-in demo client affects only the Forgotten World account signed into it. It does not inject into processes, inspect other programs, modify Windows or affect Discord. Use a disposable test account.
