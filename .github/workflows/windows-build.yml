@@ -1,0 +1,22 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["game/**", ".github/workflows/windows-build.yml"]
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.3.0
+          use-dotnet: false
+      - run: mkdir -p build && godot --headless --path game --editor --quit && godot --headless --path game --export-release "Windows Desktop" ../build/ForgottenWorld.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ForgottenWorld-Windows
+          path: build/
