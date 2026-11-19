@@ -215,7 +215,11 @@ func _attack() -> void:
             if enemy["hp"] <= 0:
                 enemies.remove_at(i)
                 inventory["gel"] += 1
-                coins += 5
+                var account_ui = get_node_or_null("AccountUI")
+                if account_ui != null and account_ui.has_method("is_signed_in") and account_ui.is_signed_in():
+                    account_ui.claim_enemy_reward()
+                else:
+                    coins += 5
             else:
                 enemies[i] = enemy
             break
