@@ -34,6 +34,7 @@ def init_db():
     "CREATE TABLE IF NOT EXISTS worlds (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, name TEXT NOT NULL, hosting TEXT NOT NULL, data TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS demo_sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, started_at REAL NOT NULL, completed INTEGER NOT NULL DEFAULT 0)",
     "CREATE TABLE IF NOT EXISTS wallets (user_id TEXT PRIMARY KEY, coins INTEGER NOT NULL DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS dev_inventory (user_id TEXT NOT NULL, item_id TEXT NOT NULL, quantity INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,item_id))",
     "CREATE TABLE IF NOT EXISTS owned_cosmetics (user_id TEXT NOT NULL, cosmetic_id TEXT NOT NULL, PRIMARY KEY(user_id,cosmetic_id))",
     "CREATE TABLE IF NOT EXISTS equipped_cosmetics (user_id TEXT PRIMARY KEY, cosmetic_id TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS daily_claims (user_id TEXT NOT NULL, claim_date TEXT NOT NULL, PRIMARY KEY(user_id,claim_date))",
@@ -194,7 +195,9 @@ def profile():
         owned=[r["cosmetic_id"] for r in cur.fetchall()]
         cur.execute(sql("SELECT cosmetic_id FROM equipped_cosmetics WHERE user_id=?"),(u["id"],))
         eq=asdict(cur.fetchone())
-    return jsonify(username=u["username"],coins=coins,owned_cosmetics=owned,equipped_cosmetic=eq["cosmetic_id"] if eq else None)
+    cur.execute(sql("SELECT item_id,quantity FROM dev_inventory WHERE user_id=?"),(u["id"],))
+        dev_items={r["item_id"]:r["quantity"] for r in cur.fetchall()}
+    return jsonify(username=u["username"],coins=coins,owned_cosmetics=owned,equipped_cosmetic=eq["cosmetic_id"] if eq else None,dev_inventory=dev_items)
 
 @app.get("/api/shop")
 def shop():
@@ -291,6 +294,53 @@ def currency_reward():
         cur.execute(sql("SELECT coins FROM wallets WHERE user_id=?"),(u["id"],))
         balance=int(asdict(cur.fetchone())["coins"])
     return jsonify(ok=True,reward=amount,coins=balance),200
+
+
+
+# Developer-only test grants. Configure DEV_ADMIN_USERNAMES as a comma-separated
+# allowlist in the server environment; never trust a client-side toggle.
+DEV_ITEMS = {"grass", "dirt", "stone", "wood", "gel", "copper", "crystal", "ice", "sand", "relic", "herb", "rune", "leaves"}
+
+def is_dev_admin(user):
+    allowed={name.strip().casefold() for name in os.getenv("DEV_ADMIN_USERNAMES", "").split(",") if name.strip()}
+    return bool(allowed) and user["username"].casefold() in allowed
+
+@app.get("/api/dev/status")
+def dev_status():
+    u,e=player()
+    if e:return e
+    return jsonify(enabled=is_dev_admin(u))
+
+@app.post("/api/dev/grant")
+def dev_grant():
+    u,e=player()
+    if e:return e
+    if not is_dev_admin(u):return jsonify(error="Developer access is not enabled for this account"),403
+    body=request.get_json(silent=True) or {}
+    item_id=str(body.get("item_id", ""))
+    quantity=body.get("quantity", 0)
+    coins=body.get("coins", 0)
+    cosmetic_id=str(body.get("cosmetic_id", ""))
+    if not isinstance(quantity,int) or isinstance(quantity,bool) or not 0<=quantity<=999:
+        return jsonify(error="Item quantity must be between 0 and 999"),400
+    if not isinstance(coins,int) or isinstance(coins,bool) or not 0<=coins<=100000:
+        return jsonify(error="Coin grant must be between 0 and 100000"),400
+    if item_id and item_id not in DEV_ITEMS:return jsonify(error="Unknown item"),400
+    if cosmetic_id and cosmetic_id not in COSMETICS:return jsonify(error="Unknown cosmetic"),400
+    if not item_id and not coins and not cosmetic_id:return jsonify(error="Choose an item, coins, or cosmetic to grant"),400
+    with db() as c:
+        cur=c.cursor()
+        if item_id and quantity:
+            cur.execute(sql("INSERT INTO dev_inventory (user_id,item_id,quantity) VALUES (?,?,?) ON CONFLICT(user_id,item_id) DO UPDATE SET quantity=dev_inventory.quantity+excluded.quantity"),(u["id"],item_id,quantity))
+        if coins:
+            cur.execute(sql("INSERT INTO wallets (user_id,coins) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET coins=wallets.coins+excluded.coins"),(u["id"],coins))
+        if cosmetic_id:
+            cur.execute(sql("INSERT INTO owned_cosmetics (user_id,cosmetic_id) VALUES (?,?) ON CONFLICT(user_id,cosmetic_id) DO NOTHING"),(u["id"],cosmetic_id))
+        cur.execute(sql("SELECT coins FROM wallets WHERE user_id=?"),(u["id"],))
+        wallet=asdict(cur.fetchone())
+        cur.execute(sql("SELECT item_id,quantity FROM dev_inventory WHERE user_id=?"),(u["id"],))
+        items={row["item_id"]:row["quantity"] for row in cur.fetchall()}
+    return jsonify(ok=True,coins=wallet["coins"] if wallet else 0,dev_inventory=items,cosmetic_id=cosmetic_id or None)
 
 
 # Lightweight polling-based multiplayer relay. Clients poll events after their last cursor.
