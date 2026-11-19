@@ -46,6 +46,12 @@ func equip_cosmetic(cosmetic_id: String) -> void:
 func claim_daily_coins() -> void:
     request_api("/api/currency/daily", HTTPClient.METHOD_POST, {})
 
+func load_world(world_id: String) -> void:
+    request_api("/api/worlds/" + world_id)
+
+func save_world(world_id: String, world_data: Dictionary) -> void:
+    request_api("/api/worlds/" + world_id, HTTPClient.METHOD_PUT, {"data": world_data})
+
 func create_world_invite(world_id: String) -> void:
     request_api("/api/worlds/" + world_id + "/invite", HTTPClient.METHOD_POST, {})
 
