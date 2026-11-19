@@ -244,8 +244,8 @@ def daily_currency():
     today=datetime.now(timezone.utc).date().isoformat()
     with db() as c:
         cur=c.cursor()
-        try:cur.execute(sql("INSERT INTO daily_claims (user_id,claim_date) VALUES (?,?)"),(u["id"],today))
-        except Exception:return jsonify(error="Daily reward already claimed",claimed=False),409
+        cur.execute(sql("INSERT INTO daily_claims (user_id,claim_date) VALUES (?,?) ON CONFLICT(user_id,claim_date) DO NOTHING"),(u["id"],today))
+        if cur.rowcount==0:return jsonify(error="Daily reward already claimed",claimed=False),409
         cur.execute(sql("SELECT coins FROM wallets WHERE user_id=?"),(u["id"],))
         wallet=asdict(cur.fetchone())
         if not wallet:
@@ -285,7 +285,7 @@ def join_world():
         invite=asdict(cur.fetchone())
         if not invite:return jsonify(error="Invalid invite code"),404
         wid=invite["world_id"]
-        cur.execute(sql("INSERT INTO world_members (world_id,user_id) VALUES (?,?)"),(wid,u["id"]))
+        cur.execute(sql("INSERT INTO world_members (world_id,user_id) VALUES (?,?) ON CONFLICT(world_id,user_id) DO NOTHING"),(wid,u["id"]))
         cur.execute(sql("SELECT id,name,hosting FROM worlds WHERE id=?"),(wid,))
         world=asdict(cur.fetchone())
     return jsonify(world=world),200
