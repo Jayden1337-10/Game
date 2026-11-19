@@ -27,6 +27,7 @@ var recipes := {
 var craft_names := ["Wooden Sword", "Wooden Helmet", "Wooden Chestplate", "Wooden Boots", "Copper Blade", "Copper Helmet", "Copper Chestplate", "Copper Boots", "Lucky Charm"]
 var enemies: Array[Dictionary] = []
 var remote_players: Dictionary = {}
+var remote_player_seen: Dictionary = {}
 var coins := 0
 var selected_slot := 0
 var hotbar := ["dirt", "stone", "wood", "grass"]
@@ -129,6 +130,11 @@ func _physics_process(delta: float) -> void:
     player_pos.x = clamp(player_pos.x, 16.0, WORLD_WIDTH * TILE - 16.0)
     camera_offset = player_pos - get_viewport_rect().size / 2.0
     attack_cooldown = maxf(0.0, attack_cooldown - delta)
+    var now_seconds := Time.get_ticks_msec() / 1000.0
+    for remote_id in remote_players.keys():
+        if now_seconds - float(remote_player_seen.get(remote_id, 0.0)) > 5.0:
+            remote_players.erase(remote_id)
+            remote_player_seen.erase(remote_id)
     _update_enemies(delta)
     var region := int(player_pos.x / TILE)
     biome = "Forest" if region < 140 else ("Mushroom Fields" if region < 280 else "Ashlands")
@@ -149,6 +155,7 @@ func _on_world_event(event_data: Dictionary) -> void:
     if remote_id.is_empty():
         return
     remote_players[remote_id] = Vector2(float(payload.get("x", 0.0)), float(payload.get("y", 0.0)))
+    remote_player_seen[remote_id] = Time.get_ticks_msec() / 1000.0
 
 func _update_enemies(delta: float) -> void:
     for enemy in enemies:
