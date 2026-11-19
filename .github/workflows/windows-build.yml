@@ -16,7 +16,7 @@ jobs:
           version: 4.3.0
           use-dotnet: false
           include-templates: true
-      - run: mkdir -p build && godot --headless --path game --editor --quit --import && godot --headless --path game --check-only && godot --headless --path game --export-release "Windows Desktop" ../build/ForgottenWorld.exe
+      - run: mkdir -p build && godot --headless --path game --editor --quit --import && godot --headless --path game --check-only && godot --headless --path game --script res://tests/smoke_test.gd && godot --headless --path game --export-release "Windows Desktop" ../build/ForgottenWorld.exe
       - uses: actions/upload-artifact@v4
         with:
           name: ForgottenWorld-Windows
