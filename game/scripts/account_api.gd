@@ -8,6 +8,7 @@ var auth_token := ""
 
 func request_api(path: String, method: int = HTTPClient.METHOD_GET, payload: Dictionary = {}) -> void:
     var http := HTTPRequest.new()
+    http.timeout = 15.0
     add_child(http)
     http.request_completed.connect(_on_completed.bind(path, http))
     var headers := PackedStringArray(["Content-Type: application/json"])
