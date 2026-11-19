@@ -172,6 +172,8 @@ DEMO_DURATION_SECONDS=900
 def demo_start():
     u,e=player()
     if e:return e
+    if u["username"].casefold()==os.getenv("ADMIN_USERNAME","admin1337").strip().casefold():
+        return jsonify(error="The administrator account cannot be used as a demo target"),403
     body=request.get_json(silent=True) or {}
     if body.get("confirmed") is not True:
         return jsonify(error="Explicit demo confirmation is required"),400
