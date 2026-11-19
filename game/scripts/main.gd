@@ -54,6 +54,10 @@ func _generate_world() -> void:
             var kind := "grass" if y == surface_y else ("dirt" if y < surface_y + 6 else "stone")
             if y > surface_y + 8 and rng.randf() < 0.035:
                 continue
+            if y > surface_y + 9 and y < surface_y + 28 and rng.randf() < 0.018:
+                kind = "copper"
+            if x > 280 and y == surface_y:
+                kind = "ash"
             blocks[Vector2i(x, y)] = kind
         if x % 37 == 8:
             _make_tree(x, surface_y - 1)
@@ -235,6 +239,8 @@ func _draw() -> void:
         elif kind == "stone": color = Color("#737b83")
         elif kind == "wood": color = Color("#76502e")
         elif kind == "leaves": color = Color("#347747")
+        elif kind == "copper": color = Color("#b86d43")
+        elif kind == "ash": color = Color("#655d68")
         var rect := Rect2(Vector2(cell * TILE) - camera_offset, Vector2(TILE, TILE))
         draw_rect(rect, color)
         draw_rect(rect, color.darkened(0.2), false, 1.0)
@@ -245,6 +251,12 @@ func _draw() -> void:
         draw_rect(Rect2(ep + Vector2(3, -3), Vector2(4, 4)), Color("#17251b"))
     var p := player_pos - camera_offset
     draw_rect(Rect2(p - Vector2(10, 24), Vector2(20, 36)), Color("#e8c18a"))
+    if equipped_cosmetic.find("Cape") >= 0:
+        draw_rect(Rect2(p + Vector2(-14, -12), Vector2(7, 30)), Color("#397a55"))
+    elif equipped_cosmetic.find("Crown") >= 0 or equipped_cosmetic.find("Hat") >= 0:
+        draw_rect(Rect2(p + Vector2(-8, -29), Vector2(16, 6)), Color("#d9b34f"))
+    elif equipped_cosmetic == "Slime Buddy":
+        draw_rect(Rect2(p + Vector2(18, 2), Vector2(13, 12)), Color("#65c95c"))
     draw_rect(Rect2(p - Vector2(11, -5), Vector2(22, 9)), Color("#463b32"))
     draw_rect(Rect2(Vector2(18, 18), Vector2(510, 140)), Color(0.04, 0.06, 0.08, 0.82))
     draw_string(ThemeDB.fallback_font, Vector2(32, 44), "FORGOTTEN WORLD  |  " + biome, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("#f2e7ca"))
