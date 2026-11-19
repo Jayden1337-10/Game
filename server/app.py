@@ -165,9 +165,6 @@ def demo_finish():
         cur.execute(sql("UPDATE users SET banned=1,ban_reason=? WHERE id=?"),("HAHA GET BANNED BUDDY — simulated exploit detected",u["id"]))
     return jsonify(banned=True,message="HAHA GET BANNED BUDDY",reason="This ban affects only this Forgotten World account.")
 
-if __name__=="__main__":
-    init_db()
-    app.run(host="0.0.0.0",port=int(os.getenv("PORT","8080")))
 
 
 # Currency and cosmetic catalog. Prices and ownership are checked server-side.
@@ -202,7 +199,11 @@ def profile():
 def shop():
     u,e=player()
     if e:return e
-    return jsonify(items=[{"id":k,**v,"owned":False} for k,v in COSMETICS.items()])
+    with db() as c:
+        cur=c.cursor()
+        cur.execute(sql("SELECT cosmetic_id FROM owned_cosmetics WHERE user_id=?"),(u["id"],))
+        owned={row["cosmetic_id"] for row in cur.fetchall()}
+    return jsonify(items=[{"id":k,**v,"owned":k in owned} for k,v in COSMETICS.items()])
 
 @app.post("/api/shop/buy")
 def buy_cosmetic():
@@ -317,3 +318,10 @@ def world_events(wid):
         rows=[asdict(row) for row in cur.fetchall()]
     for row in rows:row["event"]=json.loads(row.pop("payload"))
     return jsonify(events=rows)
+
+
+# Initialize at import time so both `python app.py` and WSGI servers (Gunicorn) work.
+init_db()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
