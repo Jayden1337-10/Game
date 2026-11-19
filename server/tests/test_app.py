@@ -114,6 +114,8 @@ def test_dev_grants_require_allowlisted_username(client, monkeypatch):
     granted = client.post("/api/dev/grant", headers=headers, json={"item_id":"wood","quantity":10,"coins":250,"cosmetic_id":"forest_cape"})
     assert granted.status_code == 200
     assert granted.get_json()["dev_inventory"]["wood"] == 10
+    assert granted.get_json()["granted_quantity"] == 10
+    assert granted.get_json()["item_id"] == "wood"
     assert granted.get_json()["coins"] == 250
     assert client.get("/api/profile", headers=headers).get_json()["coins"] == 250
     assert client.post("/api/dev/grant", headers=headers, json={"item_id":"not-real","quantity":1}).status_code == 400
