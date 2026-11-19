@@ -60,6 +60,10 @@ func _build_ui() -> void:
     var heading := Label.new()
     heading.text = "FORGOTTEN WORLD ACCOUNT"
     outer.add_child(heading)
+    var close_button := Button.new()
+    close_button.text = "Close account panel"
+    close_button.pressed.connect(func(): panel.visible = false)
+    outer.add_child(close_button)
 
     server_input = LineEdit.new()
     server_input.placeholder_text = "API URL (https://your-wispbyte-host)"
