@@ -149,11 +149,14 @@ func _make_tree(x: int, y: int) -> void:
                 blocks[Vector2i(x + dx, y + dy)] = "leaves"
 
 func _make_ruin(x: int, y: int) -> void:
-    for dx in range(-3, 4):
-        blocks[Vector2i(x + dx, y)] = "stone"
-        if dx == -3 or dx == 3:
-            for dy in range(1, 4):
-                blocks[Vector2i(x + dx, y + dy)] = "stone"
+    for dx in range(-4, 5):
+        blocks[Vector2i(x + dx, y)] = "ancient_brick"
+        if abs(dx) == 4:
+            for dy in range(1, 5):
+                blocks[Vector2i(x + dx, y + dy)] = "ancient_brick"
+    blocks[Vector2i(x, y - 1)] = "relic"
+    blocks[Vector2i(x - 2, y - 1)] = "herb"
+    blocks[Vector2i(x + 2, y - 1)] = "herb"
 
 func _spawn_enemies() -> void:
     var rng := RandomNumberGenerator.new()
@@ -381,6 +384,7 @@ func _draw() -> void:
             elif kind == "snow": color = Color("#e1edf0")
             elif kind == "sand": color = Color("#d4bb78")
             elif kind == "relic": color = Color("#d7a94e")
+            elif kind == "ancient_brick": color = Color("#8c8068")
             elif kind == "herb": color = Color("#83b96c")
             if cell.x >= 140 and cell.x < 280 and kind == "grass": color = Color("#739b70")
             if cell.x >= 280 and kind == "grass": color = Color("#a27b62")
