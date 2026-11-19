@@ -37,6 +37,17 @@ func _run_smoke_test() -> void:
         push_error("Discord Rich Presence node is not wired into the main scene")
         quit(1)
         return
+    var rpc_adapter = rpc_script.new()
+    if not rpc_adapter.has_method("connect_now") or not rpc_adapter.has_method("set_activity") or not rpc_adapter.has_method("clear_activity"):
+        push_error("Discord RPC adapter API is incomplete")
+        quit(1)
+        return
+    rpc_adapter.set_activity({"details": "Smoke test", "state": "Test world"})
+    if rpc_adapter.get("_wanted_activity").get("details", "") != "Smoke test":
+        push_error("Discord RPC adapter did not retain activity for reconnect")
+        quit(1)
+        return
+    rpc_adapter.free()
     presence_node.update_presence("Forest", "Smoke Test World")
     if presence_node.current_world != "Smoke Test World":
         push_error("Discord Rich Presence context update failed")
