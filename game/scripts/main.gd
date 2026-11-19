@@ -41,12 +41,15 @@ var cosmetic_recipes := {"Leaf Crown": {"leaves": 12, "wood": 2}, "Wooden Mask":
 var player_health := 100
 var attack_cooldown := 0.0
 var world_seed := 0
+var autosave_elapsed := 0.0
+const AUTOSAVE_SECONDS := 30.0
 
 func _ready() -> void:
     randomize()
-    world_seed = randi()
-    _generate_world()
-    _spawn_enemies()
+    if not _load_game():
+        world_seed = randi()
+        _generate_world()
+        _spawn_enemies()
     queue_redraw()
 
 func _generate_world() -> void:
@@ -102,6 +105,10 @@ func _surface_at(x: int) -> int:
     return 14
 
 func _physics_process(delta: float) -> void:
+    autosave_elapsed += delta
+    if autosave_elapsed >= AUTOSAVE_SECONDS:
+        autosave_elapsed = 0.0
+        _save_game()
     var direction := Input.get_axis("ui_left", "ui_right")
     if Input.is_key_pressed(KEY_A): direction = -1.0
     elif Input.is_key_pressed(KEY_D): direction = 1.0
@@ -308,3 +315,75 @@ func _draw() -> void:
         draw_string(ThemeDB.fallback_font, Vector2(570, 420), "Weapon: " + equipment["weapon"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
         draw_string(ThemeDB.fallback_font, Vector2(570, 446), "Head: " + equipment["head"] + " | Chest: " + equipment["chest"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
         draw_string(ThemeDB.fallback_font, Vector2(570, 472), "Legs: " + equipment["legs"] + " | Accessory: " + equipment["accessory"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_WM_CLOSE_REQUEST:
+        _save_game()
+
+func _save_game() -> void:
+    var saved_blocks: Array[Dictionary] = []
+    for cell in blocks:
+        saved_blocks.append({"x": cell.x, "y": cell.y, "kind": str(blocks[cell])})
+    var saved_enemies: Array[Dictionary] = []
+    for enemy in enemies:
+        var pos: Vector2 = enemy["pos"]
+        saved_enemies.append({"x": pos.x, "y": pos.y, "hp": enemy["hp"], "speed": enemy["speed"], "kind": enemy["kind"]})
+    var data := {
+        "version": 1,
+        "seed": world_seed,
+        "player_x": player_pos.x,
+        "player_y": player_pos.y,
+        "health": player_health,
+        "coins": coins,
+        "inventory": inventory,
+        "equipment": equipment,
+        "owned_cosmetics": owned_cosmetics,
+        "equipped_cosmetic": equipped_cosmetic,
+        "blocks": saved_blocks,
+        "enemies": saved_enemies
+    }
+    var file := FileAccess.open("user://world_save.json", FileAccess.WRITE)
+    if file == null:
+        status_text = "Save failed: " + error_string(FileAccess.get_open_error())
+        return
+    file.store_string(JSON.stringify(data))
+    file.close()
+    status_text = "World saved"
+
+func _load_game() -> bool:
+    if not FileAccess.file_exists("user://world_save.json"):
+        return false
+    var file := FileAccess.open("user://world_save.json", FileAccess.READ)
+    if file == null:
+        status_text = "Save could not be opened"
+        return false
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    file.close()
+    if not parsed is Dictionary:
+        status_text = "Save file is invalid"
+        return false
+    var data: Dictionary = parsed
+    if int(data.get("version", 0)) != 1:
+        status_text = "Save version is not supported"
+        return false
+    world_seed = int(data.get("seed", randi()))
+    _generate_world()
+    blocks.clear()
+    for entry in data.get("blocks", []):
+        if entry is Dictionary:
+            var cell := Vector2i(int(entry.get("x", 0)), int(entry.get("y", 0)))
+            blocks[cell] = str(entry.get("kind", "dirt"))
+    player_pos = Vector2(float(data.get("player_x", 420.0)), float(data.get("player_y", 260.0)))
+    player_health = clampi(int(data.get("health", 100)), 0, 100)
+    coins = maxi(0, int(data.get("coins", 0)))
+    inventory = data.get("inventory", inventory)
+    equipment = data.get("equipment", equipment)
+    owned_cosmetics = data.get("owned_cosmetics", ["None"])
+    equipped_cosmetic = str(data.get("equipped_cosmetic", "None"))
+    enemies.clear()
+    for entry in data.get("enemies", []):
+        if entry is Dictionary:
+            enemies.append({"pos": Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0))), "hp": int(entry.get("hp", 35)), "speed": float(entry.get("speed", 35.0)), "kind": str(entry.get("kind", "Slime"))})
+    status_text = "World loaded"
+    return true
