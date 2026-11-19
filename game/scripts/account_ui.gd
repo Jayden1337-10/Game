@@ -120,34 +120,38 @@ func _build_ui() -> void:
     join_button.pressed.connect(func(): api.join_world(invite_input.text.strip_edges()))
     outer.add_child(join_button)
 
-func _set_server() -> void:
+func _set_server() -> bool:
     var url := server_input.text.strip_edges().trim_suffix("/")
     if not url.begins_with("http://") and not url.begins_with("https://"):
         status_label.text = "Server URL must start with http:// or https://"
-        return
+        return false
     api.base_url = url
     var config := ConfigFile.new()
     config.set_value("account", "server_url", url)
     if not api.auth_token.is_empty():
         config.set_value("account", "token", api.auth_token)
     config.save("user://account.cfg")
+    return true
 
 func _login() -> void:
-    _set_server()
+    if not _set_server():
+        return
     if username_input.text.strip_edges().is_empty() or password_input.text.is_empty():
         status_label.text = "Enter your username and password"
         return
     api.login(username_input.text.strip_edges(), password_input.text)
 
 func _register() -> void:
-    _set_server()
+    if not _set_server():
+        return
     if username_input.text.strip_edges().is_empty() or password_input.text.length() < 8:
         status_label.text = "Choose a username and password of at least 8 characters"
         return
     api.register_account(username_input.text.strip_edges(), password_input.text)
 
 func _create_world() -> void:
-    _set_server()
+    if not _set_server():
+        return
     api.create_world(world_name_input.text.strip_edges(), "dedicated")
 
 func _on_api_response(path: String, code: int, data: Dictionary) -> void:
@@ -200,6 +204,9 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
         api.load_cosmetic_shop()
     elif path == "/api/cosmetics/equip":
         status_label.text = "Cosmetic equipped" if code == 200 else str(data.get("error", "Equip failed"))
+        if code == 200:
+            api.load_profile()
+            api.load_cosmetic_shop()
     elif path == "/api/worlds":
         if code == 201:
             active_world_id = str(data.get("id", ""))
