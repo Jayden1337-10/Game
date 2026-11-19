@@ -73,21 +73,34 @@ This is a small polling-based multiplayer prototype, not a production authoritat
 - A successful backend test run has been observed. The Windows export must complete successfully before a tested executable can be claimed.
 
 ## Discord Rich Presence
-- The Godot 4.3-compatible, pure-GDScript RPC adapter is included under `game/addons/discord_rich_presence/` (MIT licensed, with its license included).
-- On Windows desktop, the game displays the current biome, active world name (or "Solo World"), and session elapsed time in Discord.
-- Discord can be closed at launch; the adapter retries the local connection every 20 seconds. Rich Presence is optional and does not affect gameplay.
 
-### Configure Discord
-1. Create a Discord application at [Discord Developer Portal](https://discord.com/developers/applications).
-2. Copy its **Application ID** (not a bot token or client secret).
-3. Open `game/project.godot` and set the value under `[discord]`:
+The game includes a pure-GDScript Discord RPC adapter at
+`game/addons/discord_rich_presence/`. It uses the Discord desktop app's
+local IPC connection; it does not use a bot token, client secret, external
+service, or native DLL.
+
+On Windows desktop, Rich Presence shows the current biome, active shared-world
+name (or "Solo World"), and the session start time. It retries if Discord is
+closed and reapplies the latest activity after reconnecting. Unsupported
+platforms (including Android and headless builds) safely do nothing.
+
+### Configure Discord Rich Presence
+
+1. Open the [Discord Developer Portal](https://discord.com/developers/applications).
+2. Create a new application and copy its **Application ID**. This is a public
+   numeric ID. Do not use a bot token or client secret.
+3. Open `game/project.godot`.
+4. Under `[discord]`, replace the empty value:
    ```ini
    [discord]
-   application_id="YOUR_APPLICATION_ID"
+   enabled=true
+   application_id="YOUR_NUMERIC_APPLICATION_ID"
    ```
-4. Run the Windows desktop build while the Discord desktop app is running.
+5. Run the Windows desktop game while the Discord desktop app is running.
 
-This adapter targets the repository's current Godot 4.3 version and Windows desktop only. It does not provide presence on macOS, Linux, web, Android, iOS, or headless builds. No Discord token or client secret belongs in the project.
+No image assets are required. If you want a quick opt-out, set
+`enabled=false`. The game does not publish account names, invite codes,
+chat messages, or authentication details to Discord.
 
 ## Demo client
 The opt-in demo client affects only the Forgotten World account signed into it. It does not inject into processes, inspect other programs, modify Windows or affect Discord. Use a disposable test account.
