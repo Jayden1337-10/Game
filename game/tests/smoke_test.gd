@@ -35,5 +35,19 @@ func _run_smoke_test() -> void:
         push_error("World snapshot is incomplete")
         quit(1)
         return
+    if instance._biome_for_x(0) != "Forest" or instance._biome_for_x(419) != "Sunken Ruins":
+        push_error("Biome progression boundaries are incorrect")
+        quit(1)
+        return
+    if instance.quest_definitions.size() < 4:
+        push_error("Exploration quest catalogue is incomplete")
+        quit(1)
+        return
+    for i in range(12):
+        instance._record_gather("crystal")
+    if not instance.quest_claimed.get("crystal_seeker", false) or instance.coins != 45:
+        push_error("Quest reward progression failed")
+        quit(1)
+        return
     print("Forgotten World smoke test passed")
     quit(0)
