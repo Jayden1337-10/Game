@@ -166,6 +166,14 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
     elif path == "/api/profile":
         if code == 200:
             balance_label.text = "Wallet: %d coins" % int(data.get("coins", 0))
+            var game = get_node_or_null("..")
+            if game != null:
+                game.coins = int(data.get("coins", 0))
+                var cosmetic_names := {"forest_cape": "Forest Cape", "ember_cape": "Ember Cape", "royal_crown": "Royal Crown", "moon_halo": "Moon Halo", "slime_buddy": "Slime Buddy", "pixel_aura": "Pixel Aura"}
+                game.owned_cosmetics = ["None"]
+                for cosmetic_id in data.get("owned_cosmetics", []):
+                    game.owned_cosmetics.append(cosmetic_names.get(cosmetic_id, cosmetic_id))
+                game.equipped_cosmetic = cosmetic_names.get(str(data.get("equipped_cosmetic", "")), "None")
         else:
             status_label.text = str(data.get("error", "Could not load profile"))
     elif path == "/api/shop":
@@ -173,6 +181,10 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
             _populate_shop(data.get("items", []))
         else:
             status_label.text = str(data.get("error", "Could not load shop"))
+    elif path == "/api/currency/reward":
+        if code == 200:
+            status_label.text = "Enemy reward: +%d coins" % int(data.get("reward", 5))
+        api.load_profile()
     elif path == "/api/currency/daily":
         status_label.text = str(data.get("error", "Daily reward claimed"))
         if code == 200:
@@ -263,3 +275,11 @@ func _sync_world() -> void:
 func broadcast_world_event(event_data: Dictionary) -> void:
     if not active_world_id.is_empty() and not api.auth_token.is_empty():
         api.send_world_event(active_world_id, event_data)
+
+
+func is_signed_in() -> bool:
+    return not api.auth_token.is_empty()
+
+func claim_enemy_reward() -> void:
+    var reward_id := str(Time.get_ticks_usec()) + "-" + str(randi())
+    api.claim_enemy_reward(reward_id)
