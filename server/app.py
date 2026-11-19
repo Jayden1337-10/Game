@@ -195,7 +195,7 @@ def profile():
         owned=[r["cosmetic_id"] for r in cur.fetchall()]
         cur.execute(sql("SELECT cosmetic_id FROM equipped_cosmetics WHERE user_id=?"),(u["id"],))
         eq=asdict(cur.fetchone())
-    cur.execute(sql("SELECT item_id,quantity FROM dev_inventory WHERE user_id=?"),(u["id"],))
+        cur.execute(sql("SELECT item_id,quantity FROM dev_inventory WHERE user_id=?"),(u["id"],))
         dev_items={r["item_id"]:r["quantity"] for r in cur.fetchall()}
     return jsonify(username=u["username"],coins=coins,owned_cosmetics=owned,equipped_cosmetic=eq["cosmetic_id"] if eq else None,dev_inventory=dev_items)
 
