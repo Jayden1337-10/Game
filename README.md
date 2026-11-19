@@ -66,7 +66,7 @@ The server can bootstrap `admin1337` when `ADMIN_USERNAME` and `ADMIN_PASSWORD` 
 
 ## Executor-style demo
 
-The separate `ForgottenWorld-Executor-Demo.exe` is an opt-in visual simulator. It does not inject into processes, execute user-supplied scripts, modify another game, or inspect the computer. The user signs into their Forgotten World account and explicitly confirms before the 15-minute server-side timer begins. When the timer ends, the server applies a reversible demo-only account lock. The configured admin account can clear it. Closing and reopening the app does not reset an existing session; the server timestamp is authoritative.
+The separate `ForgottenWorld-Executor-Demo.exe` is an opt-in visual simulator. It does not inject into processes, execute user-supplied scripts, modify another game, or inspect the computer. The user signs into their Forgotten World account and explicitly confirms; the 15-minute server-side timer begins immediately after that sign-in step (the app needs an account identity before it can register the session). When the timer ends, the server applies a reversible demo-only account lock. The configured admin account can clear it. Closing and reopening the app does not reset an existing session; the server timestamp is authoritative.
 
 The demo executable and game executable are built by GitHub Actions. Open the repository's Actions tab, select the latest successful `Forgotten World CI` run, and download the `forgotten-world-windows-builds` artifact.
 
