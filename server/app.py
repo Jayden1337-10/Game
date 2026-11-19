@@ -121,6 +121,8 @@ def get_world(wid):
     if e:return e
     with db() as c:
         cur=c.cursor(); cur.execute(sql("SELECT * FROM worlds WHERE id=? AND owner_id=?"),(wid,u["id"])); w=asdict(cur.fetchone())
+        if not w and is_world_member(cur,wid,u["id"]):
+            cur.execute(sql("SELECT * FROM worlds WHERE id=?"),(wid,)); w=asdict(cur.fetchone())
     if not w:return jsonify(error="World not found"),404
     w["data"]=json.loads(w["data"]); return jsonify(w)
 
@@ -134,7 +136,9 @@ def save_world(wid):
     if len(encoded)>1_000_000:return jsonify(error="World save exceeds 1 MB limit"),413
     now=datetime.now(timezone.utc).isoformat()
     with db() as c:
-        cur=c.cursor(); cur.execute(sql("UPDATE worlds SET data=?,updated_at=? WHERE id=? AND owner_id=?"),(encoded,now,wid,u["id"]))
+        cur=c.cursor()
+        if not is_world_member(cur,wid,u["id"]):return jsonify(error="World not found"),404
+        cur.execute(sql("UPDATE worlds SET data=?,updated_at=? WHERE id=?"),(encoded,now,wid))
         if cur.rowcount==0:return jsonify(error="World not found"),404
     return jsonify(ok=True,updated_at=now)
 
