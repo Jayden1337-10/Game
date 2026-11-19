@@ -206,10 +206,6 @@ func _physics_process(delta: float) -> void:
     biome = _biome_for_x(region)
     if not visited_biomes.has(biome):
         _record_biome_visit(biome)
-    var current_biome := _biome_for_x(int(player_pos.x / TILE))
-    if biome != current_biome:
-        biome = current_biome
-        _record_biome_visit(biome)
     queue_redraw()
 
 func _on_world_event(event_data: Dictionary) -> void:
