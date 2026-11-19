@@ -73,7 +73,21 @@ This is a small polling-based multiplayer prototype, not a production authoritat
 - A successful backend test run has been observed. The Windows export must complete successfully before a tested executable can be claimed.
 
 ## Discord Rich Presence
-Discord Rich Presence still needs a compatible Godot RPC extension and a registered Discord application ID.
+- The Godot 4.3-compatible, pure-GDScript RPC adapter is included under `game/addons/discord_rich_presence/` (MIT licensed, with its license included).
+- On Windows desktop, the game displays the current biome, active world name (or "Solo World"), and session elapsed time in Discord.
+- Discord can be closed at launch; the adapter retries the local connection every 20 seconds. Rich Presence is optional and does not affect gameplay.
+
+### Configure Discord
+1. Create a Discord application at [Discord Developer Portal](https://discord.com/developers/applications).
+2. Copy its **Application ID** (not a bot token or client secret).
+3. Open `game/project.godot` and set the value under `[discord]`:
+   ```ini
+   [discord]
+   application_id="YOUR_APPLICATION_ID"
+   ```
+4. Run the Windows desktop build while the Discord desktop app is running.
+
+This adapter targets the repository's current Godot 4.3 version and Windows desktop only. It does not provide presence on macOS, Linux, web, Android, iOS, or headless builds. No Discord token or client secret belongs in the project.
 
 ## Demo client
 The opt-in demo client affects only the Forgotten World account signed into it. It does not inject into processes, inspect other programs, modify Windows or affect Discord. Use a disposable test account.
