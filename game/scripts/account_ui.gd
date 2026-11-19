@@ -182,10 +182,10 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
             if game != null:
                 game.coins = int(data.get("coins", 0))
                 var cosmetic_names := {"forest_cape": "Forest Cape", "ember_cape": "Ember Cape", "royal_crown": "Royal Crown", "moon_halo": "Moon Halo", "slime_buddy": "Slime Buddy", "pixel_aura": "Pixel Aura"}
-                game.owned_cosmetics = ["None"]
+                game.account_owned_cosmetics.clear()
                 for cosmetic_id in data.get("owned_cosmetics", []):
-                    game.owned_cosmetics.append(cosmetic_names.get(cosmetic_id, cosmetic_id))
-                game.equipped_cosmetic = cosmetic_names.get(str(data.get("equipped_cosmetic", "")), "None")
+                    game.account_owned_cosmetics.append(cosmetic_names.get(cosmetic_id, cosmetic_id))
+                game.account_equipped_cosmetic = cosmetic_names.get(str(data.get("equipped_cosmetic", "")), "None")
         else:
             status_label.text = str(data.get("error", "Could not load profile"))
     elif path == "/api/shop":
