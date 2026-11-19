@@ -77,3 +77,6 @@ func load_dev_status() -> void:
 
 func dev_grant(item_id: String, quantity: int, coin_amount: int, cosmetic_id: String = "") -> void:
     request_api("/api/dev/grant", HTTPClient.METHOD_POST, {"item_id": item_id, "quantity": quantity, "coins": coin_amount, "cosmetic_id": cosmetic_id})
+
+func admin_clear_demo_ban(username: String) -> void:
+    request_api("/api/admin/demo-unban", HTTPClient.METHOD_POST, {"username": username})
