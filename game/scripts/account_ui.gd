@@ -15,6 +15,7 @@ var shop_list: VBoxContainer
 var world_name_input: LineEdit
 var invite_input: LineEdit
 var active_world_id := ""
+var active_world_name := "Solo World"
 var event_cursor := ""
 var sync_timer: Timer
 var save_elapsed := 0.0
@@ -218,11 +219,13 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
     elif path == "/api/worlds":
         if code == 201:
             active_world_id = str(data.get("id", ""))
+            active_world_name = str(data.get("name", world_name_input.text.strip_edges()))
             event_cursor = ""
             sync_timer.start()
             status_label.text = "World created: " + active_world_id
             var game = get_node_or_null("..")
             if game != null:
+                game.update_discord_presence()
                 api.save_world(active_world_id, game._serialize_world())
             api.create_world_invite(active_world_id)
     elif path.ends_with("/invite"):
@@ -243,10 +246,14 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
     elif path == "/api/worlds/join":
         if code == 200:
             active_world_id = str(data.get("world", {}).get("id", ""))
+            active_world_name = str(data.get("world", {}).get("name", "Shared World"))
             event_cursor = ""
             sync_timer.start()
             api.load_world(active_world_id)
-            status_label.text = "Joined world " + str(data.get("world", {}).get("name", ""))
+            var game = get_node_or_null("..")
+            if game != null:
+                game.update_discord_presence()
+            status_label.text = "Joined world " + active_world_name
         else:
             status_label.text = str(data.get("error", "Could not join world"))
 
