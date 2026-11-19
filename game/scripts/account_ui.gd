@@ -342,7 +342,7 @@ func claim_enemy_reward() -> void:
 func _build_dev_panel() -> void:
     dev_panel = PanelContainer.new()
     dev_panel.position = Vector2(850, 110)
-    dev_panel.custom_minimum_size = Vector2(360, 390)
+    dev_panel.custom_minimum_size = Vector2(360, 460)
     dev_panel.visible = false
     add_child(dev_panel)
     var body := VBoxContainer.new()
@@ -356,6 +356,8 @@ func _build_dev_panel() -> void:
     close.pressed.connect(func(): dev_panel.visible = false)
     body.add_child(close)
     dev_item_select = OptionButton.new()
+    dev_item_select.add_item("No item")
+    dev_item_select.set_item_metadata(0, "")
     for item_id in ["grass", "dirt", "stone", "wood", "gel", "copper", "crystal", "ice", "sand", "relic", "herb", "rune", "leaves"]:
         dev_item_select.add_item(item_id.capitalize())
         dev_item_select.set_item_metadata(dev_item_select.item_count - 1, item_id)
