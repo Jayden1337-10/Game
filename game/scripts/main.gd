@@ -50,9 +50,14 @@ func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventMouseButton and event.pressed:
         var cell := Vector2i(floor((get_global_mouse_position().x + camera_offset.x) / TILE), floor((get_global_mouse_position().y + camera_offset.y) / TILE))
         if event.button_index == MOUSE_BUTTON_LEFT and blocks.has(cell) and Vector2(cell * TILE).distance_to(player_pos) < 150:
-            var kind: String = blocks[cell]; blocks.erase(cell); inventory[kind] = inventory.get(kind, 0) + 1; status_text = "Mined " + kind
+            var kind: String = blocks[cell]
+            blocks.erase(cell)
+            inventory[kind] = inventory.get(kind, 0) + 1
+            status_text = "Mined " + kind
         elif event.button_index == MOUSE_BUTTON_RIGHT and not blocks.has(cell) and Vector2(cell * TILE).distance_to(player_pos) < 150 and inventory.dirt > 0:
-            blocks[cell] = "dirt"; inventory.dirt -= 1; status_text = "Placed dirt"
+            blocks[cell] = "dirt"
+            inventory.dirt -= 1
+            status_text = "Placed dirt"
         queue_redraw()
 
 func _draw() -> void:
@@ -66,7 +71,8 @@ func _draw() -> void:
         if cell.x < left or cell.x > right or cell.y < top or cell.y > bottom: continue
         var color := Color("#4f9b45") if blocks[cell] == "grass" else (Color("#8b6546") if blocks[cell] == "dirt" else Color("#737b83"))
         var rect := Rect2(Vector2(cell * TILE) - camera_offset, Vector2(TILE, TILE))
-        draw_rect(rect, color); draw_rect(rect, color.darkened(0.2), false, 1.0)
+        draw_rect(rect, color)
+        draw_rect(rect, color.darkened(0.2), false, 1.0)
     var p := player_pos - camera_offset
     draw_rect(Rect2(p - Vector2(10, 24), Vector2(20, 36)), Color("#e8c18a"))
     draw_rect(Rect2(p - Vector2(11, -5), Vector2(22, 9)), Color("#463b32"))
