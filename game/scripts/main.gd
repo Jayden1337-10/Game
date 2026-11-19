@@ -29,6 +29,11 @@ var biome := "Forest"
 var status_text := "A/D move | SPACE jump | LMB mine | RMB place | J attack | C craft"
 var show_crafting := false
 var show_inventory := false
+var show_cosmetics := false
+var owned_cosmetics := ["None"]
+var equipped_cosmetic := "None"
+var cosmetic_prices := {"Forest Cape": 35, "Royal Crown": 90, "Slime Buddy": 70}
+var cosmetic_recipes := {"Leaf Crown": {"leaves": 12, "wood": 2}, "Wooden Mask": {"wood": 8}, "Slime Hat": {"gel": 6}}
 var player_health := 100
 var attack_cooldown := 0.0
 var world_seed := 0
@@ -125,6 +130,13 @@ func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo:
         if event.keycode == KEY_C: show_crafting = not show_crafting
         if event.keycode == KEY_I: show_inventory = not show_inventory
+        if event.keycode == KEY_M: show_cosmetics = not show_cosmetics
+        if show_crafting and event.keycode >= KEY_1 and event.keycode <= KEY_5:
+            _craft(craft_names[event.keycode - KEY_1])
+        if show_cosmetics and event.keycode >= KEY_1 and event.keycode <= KEY_3:
+            _craft_cosmetic(["Leaf Crown", "Wooden Mask", "Slime Hat"][event.keycode - KEY_1])
+        elif show_cosmetics and event.keycode >= KEY_4 and event.keycode <= KEY_6:
+            _buy_cosmetic(["Forest Cape", "Royal Crown", "Slime Buddy"][event.keycode - KEY_4])
         if event.keycode >= KEY_1 and event.keycode <= KEY_4: selected_slot = event.keycode - KEY_1
         if event.keycode == KEY_J: _attack()
         if event.keycode == KEY_E: _equip_best()
@@ -177,6 +189,31 @@ func _craft(item: String) -> void:
         equipment["armor"] = item
     status_text = "Crafted " + item
 
+func _craft_cosmetic(item: String) -> void:
+    var cost: Dictionary = cosmetic_recipes[item]
+    for material in cost:
+        if inventory.get(material, 0) < cost[material]:
+            status_text = "Need more " + material
+            return
+    for material in cost: inventory[material] -= cost[material]
+    owned_cosmetics.append(item)
+    equipped_cosmetic = item
+    status_text = "Made and equipped " + item
+
+func _buy_cosmetic(item: String) -> void:
+    if item in owned_cosmetics:
+        equipped_cosmetic = item
+        status_text = "Equipped " + item
+        return
+    var price: int = cosmetic_prices[item]
+    if coins < price:
+        status_text = "Need %d more coins" % (price - coins)
+        return
+    coins -= price
+    owned_cosmetics.append(item)
+    equipped_cosmetic = item
+    status_text = "Bought " + item
+
 func _equip_best() -> void:
     if inventory.get("copper", 0) >= 12:
         _craft("Copper Blade")
@@ -214,6 +251,7 @@ func _draw() -> void:
     draw_string(ThemeDB.fallback_font, Vector2(32, 70), "HP %d   Coins %d   Weapon: %s" % [player_health, coins, equipment["weapon"]], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
     draw_string(ThemeDB.fallback_font, Vector2(32, 96), "Dirt %d  Stone %d  Wood %d  Copper %d  Gel %d" % [inventory.dirt, inventory.stone, inventory.wood, inventory.copper, inventory.gel], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#d5dfdc"))
     draw_string(ThemeDB.fallback_font, Vector2(32, 122), status_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#c8d6df"))
+    draw_string(ThemeDB.fallback_font, Vector2(32, 145), "Cosmetic: " + equipped_cosmetic + " | C craft | I inventory | M cosmetics", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#f0d59b"))
     for i in range(hotbar.size()):
         var x := 32 + i * 48
         draw_rect(Rect2(Vector2(x, view.y - 66), Vector2(42, 42)), Color("#3a4146") if i != selected_slot else Color("#d2ae61"))
@@ -224,6 +262,15 @@ func _draw() -> void:
         for i in range(craft_names.size()):
             draw_string(ThemeDB.fallback_font, Vector2(570, 164 + i * 30), "%d. %s" % [i + 1, craft_names[i]], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
         draw_string(ThemeDB.fallback_font, Vector2(570, 320), "Press 1-5 to craft while this panel is open", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#c8d6df"))
+    if show_cosmetics:
+        draw_rect(Rect2(Vector2(550, 100), Vector2(390, 270)), Color("#171d20"))
+        draw_string(ThemeDB.fallback_font, Vector2(570, 130), "COSMETIC STALL (M to close)", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("#f2e7ca"))
+        draw_string(ThemeDB.fallback_font, Vector2(570, 164), "1 Leaf Crown: craft (12 leaves, 2 wood)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+        draw_string(ThemeDB.fallback_font, Vector2(570, 190), "2 Wooden Mask: craft (8 wood)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+        draw_string(ThemeDB.fallback_font, Vector2(570, 216), "3 Slime Hat: craft (6 gel)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+        draw_string(ThemeDB.fallback_font, Vector2(570, 250), "4 Forest Cape: buy (35 coins)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#d6c18d"))
+        draw_string(ThemeDB.fallback_font, Vector2(570, 276), "5 Royal Crown: buy (90 coins)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#d6c18d"))
+        draw_string(ThemeDB.fallback_font, Vector2(570, 302), "6 Slime Buddy: buy (70 coins)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#d6c18d"))
     if show_inventory:
         draw_rect(Rect2(Vector2(550, 360), Vector2(360, 150)), Color("#171d20"))
         draw_string(ThemeDB.fallback_font, Vector2(570, 390), "EQUIPMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("#f2e7ca"))
