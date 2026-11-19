@@ -1,6 +1,7 @@
 extends CanvasLayer
 
 signal world_event_received(event: Dictionary)
+signal world_loaded(data: Dictionary)
 
 @onready var api: ForgottenWorldAPI = get_node("../AccountAPI")
 
@@ -16,6 +17,7 @@ var invite_input: LineEdit
 var active_world_id := ""
 var event_cursor := ""
 var sync_timer: Timer
+var save_elapsed := 0.0
 
 func _ready() -> void:
     _build_ui()
@@ -192,6 +194,9 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
             event_cursor = ""
             sync_timer.start()
             status_label.text = "World created: " + active_world_id
+            var game = get_node_or_null("..")
+            if game != null:
+                api.save_world(active_world_id, game._serialize_world())
             api.create_world_invite(active_world_id)
     elif path.ends_with("/invite"):
         if code == 200:
@@ -205,11 +210,15 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
                 if event_data is Dictionary:
                     event_cursor = str(event_data.get("created_at", event_cursor))
                     world_event_received.emit(event_data)
+    elif path.begins_with("/api/worlds/") and not path.contains("/events") and data.has("data"):
+        if code == 200 and data.get("data") is Dictionary:
+            world_loaded.emit(data.get("data"))
     elif path == "/api/worlds/join":
         if code == 200:
             active_world_id = str(data.get("world", {}).get("id", ""))
             event_cursor = ""
             sync_timer.start()
+            api.load_world(active_world_id)
             status_label.text = "Joined world " + str(data.get("world", {}).get("name", ""))
         else:
             status_label.text = str(data.get("error", "Could not join world"))
@@ -245,3 +254,12 @@ func _sync_world() -> void:
     var position: Vector2 = game.player_pos
     api.send_world_event(active_world_id, {"type": "player_state", "x": position.x, "y": position.y})
     api.poll_world_events(active_world_id, event_cursor)
+    save_elapsed += sync_timer.wait_time
+    if save_elapsed >= 5.0:
+        save_elapsed = 0.0
+        api.save_world(active_world_id, game._serialize_world())
+
+
+func broadcast_world_event(event_data: Dictionary) -> void:
+    if not active_world_id.is_empty() and not api.auth_token.is_empty():
+        api.send_world_event(active_world_id, event_data)
