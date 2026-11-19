@@ -36,7 +36,10 @@ def init_db():
     "CREATE TABLE IF NOT EXISTS wallets (user_id TEXT PRIMARY KEY, coins INTEGER NOT NULL DEFAULT 0)",
     "CREATE TABLE IF NOT EXISTS owned_cosmetics (user_id TEXT NOT NULL, cosmetic_id TEXT NOT NULL, PRIMARY KEY(user_id,cosmetic_id))",
     "CREATE TABLE IF NOT EXISTS equipped_cosmetics (user_id TEXT PRIMARY KEY, cosmetic_id TEXT NOT NULL)",
-    "CREATE TABLE IF NOT EXISTS daily_claims (user_id TEXT NOT NULL, claim_date TEXT NOT NULL, PRIMARY KEY(user_id,claim_date))"]
+    "CREATE TABLE IF NOT EXISTS daily_claims (user_id TEXT NOT NULL, claim_date TEXT NOT NULL, PRIMARY KEY(user_id,claim_date))",
+    "CREATE TABLE IF NOT EXISTS world_invites (code TEXT PRIMARY KEY, world_id TEXT NOT NULL, owner_id TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS world_members (world_id TEXT NOT NULL, user_id TEXT NOT NULL, PRIMARY KEY(world_id,user_id))",
+    "CREATE TABLE IF NOT EXISTS world_events (id TEXT PRIMARY KEY, world_id TEXT NOT NULL, user_id TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL)"]
     with db() as c:
         cur=c.cursor()
         for q in schema: cur.execute(q)
@@ -109,6 +112,7 @@ def create_world():
     wid=secrets.token_hex(12); now=datetime.now(timezone.utc).isoformat()
     with db() as c:
         cur=c.cursor(); cur.execute(sql("INSERT INTO worlds (id,owner_id,name,hosting,data,updated_at) VALUES (?,?,?,?,?,?)"),(wid,u["id"],name,hosting,"{}",now))
+        cur.execute(sql("INSERT INTO world_members (world_id,user_id) VALUES (?,?)"),(wid,u["id"]))
     return jsonify(id=wid,name=name,hosting=hosting,updated_at=now),201
 
 @app.get("/api/worlds/<wid>")
@@ -251,3 +255,59 @@ def daily_currency():
             cur.execute(sql("UPDATE wallets SET coins=coins+100 WHERE user_id=?"),(u["id"],))
             balance=wallet["coins"]+100
     return jsonify(ok=True,reward=100,coins=balance)
+
+
+# Lightweight polling-based multiplayer relay. Clients poll events after their last cursor.
+def is_world_member(cur, wid, uid):
+    cur.execute(sql("SELECT user_id FROM world_members WHERE world_id=? AND user_id=?"),(wid,uid))
+    return cur.fetchone() is not None
+
+@app.post("/api/worlds/<wid>/invite")
+def create_world_invite(wid):
+    u,e=player()
+    if e:return e
+    code=secrets.token_urlsafe(8)
+    with db() as c:
+        cur=c.cursor()
+        cur.execute(sql("SELECT id FROM worlds WHERE id=? AND owner_id=?"),(wid,u["id"]))
+        if not cur.fetchone():return jsonify(error="World not found"),404
+        cur.execute(sql("INSERT INTO world_invites (code,world_id,owner_id) VALUES (?,?,?)"),(code,wid,u["id"]))
+    return jsonify(code=code)
+
+@app.post("/api/worlds/join")
+def join_world():
+    u,e=player()
+    if e:return e
+    code=str((request.get_json(silent=True) or {}).get("code",""))
+    with db() as c:
+        cur=c.cursor()
+        cur.execute(sql("SELECT world_id FROM world_invites WHERE code=?"),(code,))
+        invite=asdict(cur.fetchone())
+        if not invite:return jsonify(error="Invalid invite code"),404
+        wid=invite["world_id"]
+        cur.execute(sql("INSERT INTO world_members (world_id,user_id) VALUES (?,?)"),(wid,u["id"]))
+        cur.execute(sql("SELECT id,name,hosting FROM worlds WHERE id=?"),(wid,))
+        world=asdict(cur.fetchone())
+    return jsonify(world=world),200
+
+@app.route("/api/worlds/<wid>/events",methods=["GET","POST"])
+def world_events(wid):
+    u,e=player()
+    if e:return e
+    with db() as c:
+        cur=c.cursor()
+        if not is_world_member(cur,wid,u["id"]):return jsonify(error="You are not a member of this world"),403
+        if request.method=="POST":
+            payload=(request.get_json(silent=True) or {}).get("event")
+            if not isinstance(payload,dict):return jsonify(error="event must be an object"),400
+            encoded=json.dumps(payload,separators=(",",":"))
+            if len(encoded)>4096:return jsonify(error="Event too large"),413
+            event_id=secrets.token_hex(12)
+            now=datetime.now(timezone.utc).isoformat()
+            cur.execute(sql("INSERT INTO world_events (id,world_id,user_id,payload,created_at) VALUES (?,?,?,?,?)"),(event_id,wid,u["id"],encoded,now))
+            return jsonify(id=event_id,created_at=now),201
+        after=request.args.get("after","")
+        cur.execute(sql("SELECT id,user_id,payload,created_at FROM world_events WHERE world_id=? AND created_at>? AND user_id<>? ORDER BY created_at ASC LIMIT 100"),(wid,after,u["id"]))
+        rows=[asdict(row) for row in cur.fetchall()]
+    for row in rows:row["event"]=json.loads(row.pop("payload"))
+    return jsonify(events=rows)
