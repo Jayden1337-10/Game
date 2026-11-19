@@ -182,9 +182,10 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
             var game = get_node_or_null("..")
             if game != null:
                 game.coins = int(data.get("coins", game.coins))
-                var granted_items: Dictionary = data.get("dev_inventory", {})
-                for item_id in granted_items:
-                    game.inventory[item_id] = int(granted_items[item_id])
+                var granted_item_id := str(data.get("item_id", ""))
+                var granted_quantity := int(data.get("granted_quantity", 0))
+                if not granted_item_id.is_empty() and granted_quantity > 0:
+                    game.inventory[granted_item_id] = int(game.inventory.get(granted_item_id, 0)) + granted_quantity
                 game._save_game()
                 if not str(data.get("cosmetic_id", "")).is_empty():
                     var cosmetic_names := {"forest_cape":"Forest Cape", "ember_cape":"Ember Cape", "royal_crown":"Royal Crown", "moon_halo":"Moon Halo", "slime_buddy":"Slime Buddy", "pixel_aura":"Pixel Aura"}
