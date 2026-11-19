@@ -9,10 +9,12 @@ A Terraria-inspired 2D sandbox RPG prototype built with Godot 4 and a Flask acco
 - `.github/workflows/`: backend regression tests and Windows export checks.
 
 ## Gameplay
-- Procedural Forest, Mushroom Fields and Ashlands regions, caves, copper ore, trees and ruins.
-- Movement, jumping, mining, block placement and a four-slot hotbar.
-- Slime, Fungus and Ash Slime enemies, basic enemy pursuit, contact damage and melee combat.
-- Inventory materials, wooden/copper weapons, armor slots, accessories and crafting.
+- Six procedural biomes: Forest, Mushroom Fields, Crystal Caverns, Frostreach, Ashlands and Sunken Ruins.
+- Biome-specific terrain and resources, including crystals, ice, snow, sand, herbs and ancient relics.
+- Distinct crystal formations, frost trees, mushroom growths and ancient brick ruins with collectible relic caches.
+- Slime, Fungus, Ash Slime, Crystal Mote, Frost Wisp and Sand Beetle creatures.
+- Exploration journal with gathering and discovery quests that award local coins.
+- Movement, jumping, mining, block placement, a four-slot hotbar, inventory and crafting.
 - Local cosmetics: craftable Leaf Crown, Wooden Mask and Slime Hat; Forest Cape, Royal Crown and Slime Buddy.
 - Local world autosave every 30 seconds to `user://world_save.json`.
 - Remote player display and tile-change relay in shared worlds.
@@ -23,10 +25,10 @@ A Terraria-inspired 2D sandbox RPG prototype built with Godot 4 and a Flask acco
 - Left click: mine nearby blocks.
 - Right click: place the selected hotbar block.
 - 1-4: select hotbar slot.
-- J: melee attack.
 - C: crafting panel; use 1-9 to craft.
 - I: equipment panel.
 - M: local cosmetic crafting stall.
+- Q: adventurer journal and quest progress.
 - U: account, persistent wallet, online cosmetic shop and world-sharing panel.
 
 ## Run the account server
