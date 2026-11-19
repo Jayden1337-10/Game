@@ -69,7 +69,18 @@ func _ready() -> void:
     if account_ui != null:
         account_ui.world_event_received.connect(_on_world_event)
         account_ui.world_loaded.connect(_apply_shared_world)
+    update_discord_presence()
     queue_redraw()
+
+func update_discord_presence() -> void:
+    var presence := get_node_or_null("DiscordPresence")
+    if presence == null:
+        return
+    var world_label := "Solo World"
+    var account_ui := get_node_or_null("AccountUI")
+    if account_ui != null and not str(account_ui.active_world_name).is_empty():
+        world_label = str(account_ui.active_world_name)
+    presence.call("update_presence", biome, world_label)
 
 func _generate_world() -> void:
     var rng := RandomNumberGenerator.new()
@@ -207,7 +218,10 @@ func _physics_process(delta: float) -> void:
             remote_player_seen.erase(remote_id)
     _update_enemies(delta)
     var region := int(player_pos.x / TILE)
-    biome = _biome_for_x(region)
+    var next_biome := _biome_for_x(region)
+    if next_biome != biome:
+        biome = next_biome
+        update_discord_presence()
     if not visited_biomes.has(biome):
         _record_biome_visit(biome)
     queue_redraw()
