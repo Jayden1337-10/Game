@@ -108,9 +108,13 @@ def test_demo_ban_is_scoped_to_the_signed_in_game_account(client, monkeypatch):
     api.init_db()
     admin_login = client.post("/api/login", json={"username": "admin1337", "password": "test-admin-password"})
     assert admin_login.status_code == 200
-    cleared = client.post("/api/admin/demo-unban", headers=auth(admin_login.get_json()["token"]), json={"user_id": client.get("/api/me", headers=auth(target_token)).get_json().get("id", "")})
-    # The demo-banned user's ID is read from the test database because /api/me is intentionally blocked.
+    with api.db() as conn:
+        cur = conn.cursor()
+        cur.execute(api.sql("SELECT id FROM users WHERE username=?"), ("demo_target",))
+        target_id = api.asdict(cur.fetchone())["id"]
+    cleared = client.post("/api/admin/demo-unban", headers=auth(admin_login.get_json()["token"]), json={"user_id": target_id})
     assert cleared.status_code == 200
+    assert client.get("/api/me", headers=auth(target_token)).status_code == 200
 
 
 def test_dev_grants_require_allowlisted_username(client, monkeypatch):
