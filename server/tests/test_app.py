@@ -88,3 +88,17 @@ def test_gameplay_rewards_are_idempotent_and_capped(client):
     limited = client.post("/api/currency/reward", headers=headers, json={"reward_id": "slime-reward-over-limit", "source": "slime_kill"})
     assert limited.status_code == 429
     assert client.get("/api/profile", headers=headers).get_json()["coins"] == 200
+
+
+def test_demo_ban_is_scoped_to_the_signed_in_game_account(client, monkeypatch):
+    target_token = register(client, "demo_target")
+    other_token = register(client, "other_player")
+    headers = auth(target_token)
+    started = api.time.time()
+    session = client.post("/api/demo-exploit/start", headers=headers, json={})
+    assert session.status_code == 200
+    monkeypatch.setattr(api.time, "time", lambda: started + 181)
+    finished = client.post("/api/demo-exploit/finish", headers=headers, json={"session_id": session.get_json()["session_id"]})
+    assert finished.status_code == 200
+    assert client.get("/api/me", headers=headers).status_code == 403
+    assert client.get("/api/me", headers=auth(other_token)).status_code == 200
