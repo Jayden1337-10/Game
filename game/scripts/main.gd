@@ -11,7 +11,7 @@ var player_pos := Vector2(420, 260)
 var velocity := Vector2.ZERO
 var camera_offset := Vector2.ZERO
 var blocks: Dictionary = {}
-var inventory := {"grass": 0, "dirt": 24, "stone": 0, "wood": 0, "gel": 0, "copper": 0}
+var inventory := {"grass": 0, "dirt": 24, "stone": 0, "wood": 0, "gel": 0, "copper": 0, "crystal": 0, "ice": 0, "sand": 0, "relic": 0, "herb": 0}
 var equipment := {"weapon": "Wooden Sword", "head": "None", "chest": "Cloth Tunic", "legs": "None", "accessory": "None"}
 var recipes := {
     "Wooden Sword": {"wood": 8},
@@ -36,6 +36,16 @@ var status_text := "A/D move | SPACE jump | LMB mine | RMB place | J attack | C 
 var show_crafting := false
 var show_inventory := false
 var show_cosmetics := false
+var show_quests := false
+var visited_biomes: Dictionary = {}
+var quest_progress := {"wood": 0, "crystal": 0, "relic": 0, "biomes": 0}
+var quest_claimed: Dictionary = {}
+var quest_definitions := {
+    "woodcutter": {"label": "Helpful Hands", "goal": "wood", "target": 20, "reward": 30, "description": "Gather 20 wood"},
+    "crystal_seeker": {"label": "Bright Discoveries", "goal": "crystal", "target": 12, "reward": 45, "description": "Gather 12 crystals"},
+    "relic_hunter": {"label": "Lost History", "goal": "relic", "target": 8, "reward": 75, "description": "Find 8 ancient relics"},
+    "wanderer": {"label": "World Wanderer", "goal": "biomes", "target": 5, "reward": 100, "description": "Visit 5 different biomes"}
+}
 var owned_cosmetics := ["None"]
 var equipped_cosmetic := "None"
 var account_owned_cosmetics: Array = []
@@ -65,23 +75,70 @@ func _generate_world() -> void:
     rng.seed = world_seed
     for x in range(WORLD_WIDTH):
         var surface_y := 13 + int(round(sin(float(x) * 0.12) * 2.0 + rng.randf_range(-1.0, 1.0)))
+        var region := _biome_for_x(x)
         for y in range(surface_y, WORLD_HEIGHT):
-            var kind := "grass" if y == surface_y else ("dirt" if y < surface_y + 6 else "stone")
-            if y > surface_y + 8 and rng.randf() < 0.035:
-                continue
-            if y > surface_y + 9 and y < surface_y + 28 and rng.randf() < 0.018:
-                kind = "copper"
-            if x > 280 and y == surface_y:
+            var depth := y - surface_y
+            var kind := "grass" if depth == 0 else ("dirt" if depth < 6 else "stone")
+            if region == "Mushroom Fields" and depth == 0:
+                kind = "mushroom_soil"
+            elif region == "Crystal Caverns" and depth > 5:
+                kind = "crystal_stone" if rng.randf() < 0.22 else "stone"
+            elif region == "Frostreach" and depth == 0:
+                kind = "ice"
+            elif region == "Ashlands" and depth == 0:
                 kind = "ash"
+            elif region == "Sunken Ruins" and depth == 0:
+                kind = "sand"
+            if depth > 8 and rng.randf() < 0.025:
+                continue
+            if depth > 9 and depth < 30 and rng.randf() < 0.018:
+                kind = "copper"
+            if region == "Crystal Caverns" and depth > 7 and rng.randf() < 0.035:
+                kind = "crystal"
+            if region == "Sunken Ruins" and depth > 3 and rng.randf() < 0.012:
+                kind = "relic"
+            if region == "Mushroom Fields" and depth == 1 and rng.randf() < 0.025:
+                kind = "herb"
             blocks[Vector2i(x, y)] = kind
         blocks[Vector2i(x, WORLD_HEIGHT - 1)] = "stone"
-        if x % 37 == 8:
+        if region == "Forest" and x % 17 == 8:
             _make_tree(x, surface_y - 1)
-        if x >= 140 and x < 280 and x % 19 == 4:
+        elif region == "Mushroom Fields" and x % 19 == 4:
             blocks[Vector2i(x, surface_y - 1)] = "mushroom"
             blocks[Vector2i(x, surface_y - 2)] = "mushroom_cap"
+        elif region == "Crystal Caverns" and x % 13 == 5:
+            _make_crystal_cluster(x, surface_y - 1)
+        elif region == "Frostreach" and x % 21 == 7:
+            _make_frost_tree(x, surface_y - 1)
+        elif region == "Sunken Ruins" and x % 23 == 9:
+            _make_ruin(x, surface_y - 1)
         if x % 91 == 35:
             _make_ruin(x, surface_y - 1)
+
+func _biome_for_x(region: int) -> String:
+    if region < 70:
+        return "Forest"
+    if region < 140:
+        return "Mushroom Fields"
+    if region < 210:
+        return "Crystal Caverns"
+    if region < 280:
+        return "Frostreach"
+    if region < 350:
+        return "Ashlands"
+    return "Sunken Ruins"
+
+func _make_crystal_cluster(x: int, y: int) -> void:
+    for offset in range(3):
+        blocks[Vector2i(x + offset - 1, y - offset)] = "crystal"
+
+func _make_frost_tree(x: int, y: int) -> void:
+    for h in range(5):
+        blocks[Vector2i(x, y - h)] = "ice"
+    for dx in range(-2, 3):
+        for dy in range(-5, -2):
+            if abs(dx) + abs(dy + 4) < 4:
+                blocks[Vector2i(x + dx, y + dy)] = "snow"
 
 func _make_tree(x: int, y: int) -> void:
     for h in range(4):
@@ -104,7 +161,13 @@ func _spawn_enemies() -> void:
     for i in range(28):
         var x := rng.randi_range(8, WORLD_WIDTH - 8)
         var ground := _surface_at(x)
-        var enemy_kind := "Slime" if x < 140 else ("Fungus" if x < 280 else "Ash Slime")
+        var region := _biome_for_x(x)
+        var enemy_kind := "Slime"
+        if region == "Mushroom Fields": enemy_kind = "Fungus"
+        elif region == "Crystal Caverns": enemy_kind = "Crystal Mote"
+        elif region == "Frostreach": enemy_kind = "Frost Wisp"
+        elif region == "Ashlands": enemy_kind = "Ash Slime"
+        elif region == "Sunken Ruins": enemy_kind = "Sand Beetle"
         enemies.append({"pos": Vector2(x * TILE, ground * TILE - 18), "hp": 35, "speed": rng.randf_range(25.0, 55.0), "kind": enemy_kind})
 
 func _surface_at(x: int) -> int:
@@ -140,7 +203,13 @@ func _physics_process(delta: float) -> void:
             remote_player_seen.erase(remote_id)
     _update_enemies(delta)
     var region := int(player_pos.x / TILE)
-    biome = "Forest" if region < 140 else ("Mushroom Fields" if region < 280 else "Ashlands")
+    biome = _biome_for_x(region)
+    if not visited_biomes.has(biome):
+        _record_biome_visit(biome)
+    var current_biome := _biome_for_x(int(player_pos.x / TILE))
+    if biome != current_biome:
+        biome = current_biome
+        _record_biome_visit(biome)
     queue_redraw()
 
 func _on_world_event(event_data: Dictionary) -> void:
@@ -181,6 +250,7 @@ func _unhandled_input(event: InputEvent) -> void:
         if event.keycode == KEY_C: show_crafting = not show_crafting
         if event.keycode == KEY_I: show_inventory = not show_inventory
         if event.keycode == KEY_M: show_cosmetics = not show_cosmetics
+        if event.keycode == KEY_Q: show_quests = not show_quests
         if show_crafting and event.keycode >= KEY_1 and event.keycode <= KEY_9 and event.keycode - KEY_1 < craft_names.size():
             _craft(craft_names[event.keycode - KEY_1])
         if show_cosmetics and event.keycode >= KEY_1 and event.keycode <= KEY_3:
@@ -198,6 +268,7 @@ func _unhandled_input(event: InputEvent) -> void:
                 var kind: String = blocks[cell]
                 blocks.erase(cell)
                 inventory[kind] = inventory.get(kind, 0) + 1
+                _record_gather(kind)
                 if kind == "wood": coins += 1
                 var account_ui = get_node_or_null("AccountUI")
                 if account_ui != null:
@@ -307,6 +378,14 @@ func _draw() -> void:
             elif kind == "ash": color = Color("#655d68")
             elif kind == "mushroom": color = Color("#d6c3a0")
             elif kind == "mushroom_cap": color = Color("#9a5ca7")
+            elif kind == "mushroom_soil": color = Color("#667b62")
+            elif kind == "crystal": color = Color("#65d5e8")
+            elif kind == "crystal_stone": color = Color("#526c82")
+            elif kind == "ice": color = Color("#b8dce8")
+            elif kind == "snow": color = Color("#e1edf0")
+            elif kind == "sand": color = Color("#d4bb78")
+            elif kind == "relic": color = Color("#d7a94e")
+            elif kind == "herb": color = Color("#83b96c")
             if cell.x >= 140 and cell.x < 280 and kind == "grass": color = Color("#739b70")
             if cell.x >= 280 and kind == "grass": color = Color("#a27b62")
             var rect := Rect2(Vector2(cell * TILE) - camera_offset, Vector2(TILE, TILE))
@@ -318,7 +397,12 @@ func _draw() -> void:
         draw_string(ThemeDB.fallback_font, remote_pos + Vector2(-28, -30), "Guest", HORIZONTAL_ALIGNMENT_LEFT, 60, 10, Color.WHITE)
     for enemy in enemies:
         var ep: Vector2 = enemy["pos"] - camera_offset
-        var enemy_color := Color("#65c95c") if enemy["kind"] == "Slime" else (Color("#b28ad1") if enemy["kind"] == "Fungus" else Color("#b76d55"))
+        var enemy_color := Color("#65c95c")
+        if enemy["kind"] == "Fungus": enemy_color = Color("#b28ad1")
+        elif enemy["kind"] == "Ash Slime": enemy_color = Color("#b76d55")
+        elif enemy["kind"] == "Crystal Mote": enemy_color = Color("#69d7e8")
+        elif enemy["kind"] == "Frost Wisp": enemy_color = Color("#c5efff")
+        elif enemy["kind"] == "Sand Beetle": enemy_color = Color("#c99c55")
         draw_rect(Rect2(ep - Vector2(13, 12), Vector2(26, 24)), enemy_color)
         draw_rect(Rect2(ep - Vector2(7, 3), Vector2(4, 4)), Color("#17251b"))
         draw_rect(Rect2(ep + Vector2(3, -3), Vector2(4, 4)), Color("#17251b"))
@@ -337,7 +421,7 @@ func _draw() -> void:
     draw_string(ThemeDB.fallback_font, Vector2(32, 70), "HP %d   Coins %d   Weapon: %s" % [player_health, coins, equipment["weapon"]], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
     draw_string(ThemeDB.fallback_font, Vector2(32, 96), "Dirt %d  Stone %d  Wood %d  Copper %d  Gel %d" % [inventory.dirt, inventory.stone, inventory.wood, inventory.copper, inventory.gel], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#d5dfdc"))
     draw_string(ThemeDB.fallback_font, Vector2(32, 122), status_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#c8d6df"))
-    draw_string(ThemeDB.fallback_font, Vector2(32, 145), "Cosmetic: " + visual_cosmetic + " | C craft | I inventory | M cosmetics", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#f0d59b"))
+    draw_string(ThemeDB.fallback_font, Vector2(32, 145), "Cosmetic: " + visual_cosmetic + " | C craft | I inventory | M cosmetics | Q journal", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#f0d59b"))
     for i in range(hotbar.size()):
         var x := 32 + i * 48
         draw_rect(Rect2(Vector2(x, view.y - 66), Vector2(42, 42)), Color("#3a4146") if i != selected_slot else Color("#d2ae61"))
@@ -357,6 +441,19 @@ func _draw() -> void:
         draw_string(ThemeDB.fallback_font, Vector2(570, 250), "4 Forest Cape: buy (35 coins)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#d6c18d"))
         draw_string(ThemeDB.fallback_font, Vector2(570, 276), "5 Royal Crown: buy (90 coins)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#d6c18d"))
         draw_string(ThemeDB.fallback_font, Vector2(570, 302), "6 Slime Buddy: buy (70 coins)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#d6c18d"))
+    if show_quests:
+        draw_rect(Rect2(Vector2(550, 100), Vector2(430, 230)), Color("#171d20"))
+        draw_string(ThemeDB.fallback_font, Vector2(570, 130), "ADVENTURER JOURNAL (Q to close)", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("#f2e7ca"))
+        var quest_y := 164
+        for quest_id in quest_definitions:
+            var quest: Dictionary = quest_definitions[quest_id]
+            var goal: String = str(quest["goal"])
+            var current := int(quest_progress.get(goal, 0))
+            var target := int(quest["target"])
+            var line := "%s  %d/%d  |  %d coins" % [quest["label"], mini(current, target), target, quest["reward"]]
+            if quest_claimed.get(quest_id, false): line += "  COMPLETE"
+            draw_string(ThemeDB.fallback_font, Vector2(570, quest_y), line, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#d6c18d") if quest_claimed.get(quest_id, false) else Color.WHITE)
+            quest_y += 30
     if show_inventory:
         draw_rect(Rect2(Vector2(550, 360), Vector2(360, 150)), Color("#171d20"))
         draw_string(ThemeDB.fallback_font, Vector2(570, 390), "EQUIPMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("#f2e7ca"))
@@ -364,6 +461,37 @@ func _draw() -> void:
         draw_string(ThemeDB.fallback_font, Vector2(570, 446), "Head: " + equipment["head"] + " | Chest: " + equipment["chest"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
         draw_string(ThemeDB.fallback_font, Vector2(570, 472), "Legs: " + equipment["legs"] + " | Accessory: " + equipment["accessory"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 
+
+
+
+func _record_gather(kind: String) -> void:
+    var quest_key := ""
+    if kind == "wood": quest_key = "wood"
+    elif kind == "crystal": quest_key = "crystal"
+    elif kind == "relic": quest_key = "relic"
+    if quest_key.is_empty():
+        return
+    quest_progress[quest_key] = int(quest_progress.get(quest_key, 0)) + 1
+    _check_quest_rewards()
+
+func _record_biome_visit(name: String) -> void:
+    if visited_biomes.has(name):
+        return
+    visited_biomes[name] = true
+    quest_progress["biomes"] = visited_biomes.size()
+    status_text = "Discovered " + name
+    _check_quest_rewards()
+
+func _check_quest_rewards() -> void:
+    for quest_id in quest_definitions:
+        if quest_claimed.get(quest_id, false):
+            continue
+        var quest: Dictionary = quest_definitions[quest_id]
+        var goal: String = str(quest["goal"])
+        if int(quest_progress.get(goal, 0)) >= int(quest["target"]):
+            quest_claimed[quest_id] = true
+            coins += int(quest["reward"])
+            status_text = "Journal complete: " + str(quest["label"]) + " (+" + str(quest["reward"]) + " coins)"
 
 func _notification(what: int) -> void:
     if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -388,6 +516,9 @@ func _save_game() -> void:
         "equipment": equipment,
         "owned_cosmetics": owned_cosmetics,
         "equipped_cosmetic": equipped_cosmetic,
+        "quest_progress": quest_progress,
+        "quest_claimed": quest_claimed,
+        "visited_biomes": visited_biomes,
         "blocks": saved_blocks,
         "enemies": saved_enemies
     }
@@ -429,6 +560,9 @@ func _load_game() -> bool:
     equipment = data.get("equipment", equipment)
     owned_cosmetics = data.get("owned_cosmetics", ["None"])
     equipped_cosmetic = str(data.get("equipped_cosmetic", "None"))
+    quest_progress = data.get("quest_progress", quest_progress)
+    quest_claimed = data.get("quest_claimed", quest_claimed)
+    visited_biomes = data.get("visited_biomes", visited_biomes)
     enemies.clear()
     for entry in data.get("enemies", []):
         if entry is Dictionary:
