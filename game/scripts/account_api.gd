@@ -14,7 +14,7 @@ func request_api(path: String, method: int = HTTPClient.METHOD_GET, payload: Dic
     if not auth_token.is_empty():
         headers.append("Authorization: Bearer " + auth_token)
     var body := JSON.stringify(payload) if not payload.is_empty() else ""
-    var error := http.request(base_url.rstrip("/") + path, headers, method, body)
+    var error := http.request(base_url.trim_suffix("/") + path, headers, method, body)
     if error != OK:
         http.queue_free()
         api_response.emit(path, 0, {"error": "Could not start HTTP request: " + str(error)})
