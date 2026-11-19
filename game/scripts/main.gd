@@ -241,10 +241,10 @@ func _equip_best() -> void:
 func _draw() -> void:
     var view := get_viewport_rect().size
     draw_rect(Rect2(Vector2.ZERO, view), Color("#7896a0"))
-    var left := max(0, int(camera_offset.x / TILE) - 2)
-    var right := min(WORLD_WIDTH, int((camera_offset.x + view.x) / TILE) + 3)
-    var top := max(0, int(camera_offset.y / TILE) - 2)
-    var bottom := min(WORLD_HEIGHT, int((camera_offset.y + view.y) / TILE) + 3)
+    var left: int = maxi(0, int(camera_offset.x / TILE) - 2)
+    var right: int = mini(WORLD_WIDTH, int((camera_offset.x + view.x) / TILE) + 3)
+    var top: int = maxi(0, int(camera_offset.y / TILE) - 2)
+    var bottom: int = mini(WORLD_HEIGHT, int((camera_offset.y + view.y) / TILE) + 3)
     for cell in blocks:
         if cell.x < left or cell.x > right or cell.y < top or cell.y > bottom: continue
         var kind: String = blocks[cell]
