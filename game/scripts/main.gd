@@ -65,6 +65,9 @@ func _generate_world() -> void:
             blocks[Vector2i(x, y)] = kind
         if x % 37 == 8:
             _make_tree(x, surface_y - 1)
+        if x >= 140 and x < 280 and x % 19 == 4:
+            blocks[Vector2i(x, surface_y - 1)] = "mushroom"
+            blocks[Vector2i(x, surface_y - 2)] = "mushroom_cap"
         if x % 91 == 35:
             _make_ruin(x, surface_y - 1)
 
@@ -89,7 +92,8 @@ func _spawn_enemies() -> void:
     for i in range(28):
         var x := rng.randi_range(8, WORLD_WIDTH - 8)
         var ground := _surface_at(x)
-        enemies.append({"pos": Vector2(x * TILE, ground * TILE - 18), "hp": 35, "speed": rng.randf_range(25.0, 55.0), "kind": "Slime"})
+        var enemy_kind := "Slime" if x < 140 else ("Fungus" if x < 280 else "Ash Slime")
+        enemies.append({"pos": Vector2(x * TILE, ground * TILE - 18), "hp": 35, "speed": rng.randf_range(25.0, 55.0), "kind": enemy_kind})
 
 func _surface_at(x: int) -> int:
     for y in range(WORLD_HEIGHT):
@@ -251,12 +255,17 @@ func _draw() -> void:
         elif kind == "leaves": color = Color("#347747")
         elif kind == "copper": color = Color("#b86d43")
         elif kind == "ash": color = Color("#655d68")
+        elif kind == "mushroom": color = Color("#d6c3a0")
+        elif kind == "mushroom_cap": color = Color("#9a5ca7")
+        if cell.x >= 140 and cell.x < 280 and kind == "grass": color = Color("#739b70")
+        if cell.x >= 280 and kind == "grass": color = Color("#a27b62")
         var rect := Rect2(Vector2(cell * TILE) - camera_offset, Vector2(TILE, TILE))
         draw_rect(rect, color)
         draw_rect(rect, color.darkened(0.2), false, 1.0)
     for enemy in enemies:
         var ep: Vector2 = enemy["pos"] - camera_offset
-        draw_rect(Rect2(ep - Vector2(13, 12), Vector2(26, 24)), Color("#65c95c"))
+        var enemy_color := Color("#65c95c") if enemy["kind"] == "Slime" else (Color("#b28ad1") if enemy["kind"] == "Fungus" else Color("#b76d55"))
+        draw_rect(Rect2(ep - Vector2(13, 12), Vector2(26, 24)), enemy_color)
         draw_rect(Rect2(ep - Vector2(7, 3), Vector2(4, 4)), Color("#17251b"))
         draw_rect(Rect2(ep + Vector2(3, -3), Vector2(4, 4)), Color("#17251b"))
     var p := player_pos - camera_offset
