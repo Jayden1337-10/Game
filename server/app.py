@@ -260,6 +260,8 @@ def daily_currency():
 # Lightweight polling-based multiplayer relay. Clients poll events after their last cursor.
 def is_world_member(cur, wid, uid):
     cur.execute(sql("SELECT user_id FROM world_members WHERE world_id=? AND user_id=?"),(wid,uid))
+    if cur.fetchone() is not None:return True
+    cur.execute(sql("SELECT id FROM worlds WHERE id=? AND owner_id=?"),(wid,uid))
     return cur.fetchone() is not None
 
 @app.post("/api/worlds/<wid>/invite")
