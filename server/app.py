@@ -17,7 +17,8 @@ DB_FILE=os.getenv("SQLITE_PATH","forgotten_world.db")
 def db():
     if DB_URL:
         import psycopg
-        conn=psycopg.connect(DB_URL)
+        from psycopg.rows import dict_row
+        conn=psycopg.connect(DB_URL,row_factory=dict_row)
     else:
         conn=sqlite3.connect(DB_FILE); conn.row_factory=sqlite3.Row
     try:
@@ -31,7 +32,11 @@ def init_db():
     schema=[
     "CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL, banned INTEGER NOT NULL DEFAULT 0, ban_reason TEXT)",
     "CREATE TABLE IF NOT EXISTS worlds (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, name TEXT NOT NULL, hosting TEXT NOT NULL, data TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL)",
-    "CREATE TABLE IF NOT EXISTS demo_sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, started_at REAL NOT NULL, completed INTEGER NOT NULL DEFAULT 0)"]
+    "CREATE TABLE IF NOT EXISTS demo_sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, started_at REAL NOT NULL, completed INTEGER NOT NULL DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS wallets (user_id TEXT PRIMARY KEY, coins INTEGER NOT NULL DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS owned_cosmetics (user_id TEXT NOT NULL, cosmetic_id TEXT NOT NULL, PRIMARY KEY(user_id,cosmetic_id))",
+    "CREATE TABLE IF NOT EXISTS equipped_cosmetics (user_id TEXT PRIMARY KEY, cosmetic_id TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS daily_claims (user_id TEXT NOT NULL, claim_date TEXT NOT NULL, PRIMARY KEY(user_id,claim_date))"]
     with db() as c:
         cur=c.cursor()
         for q in schema: cur.execute(q)
@@ -68,6 +73,7 @@ def register():
     try:
         with db() as c:
             cur=c.cursor(); cur.execute(sql("INSERT INTO users (id,username,password_hash,created_at) VALUES (?,?,?,?)"),(uid,name,generate_password_hash(pw),now))
+            cur.execute(sql("INSERT INTO wallets (user_id,coins) VALUES (?,0)"),(uid,))
     except Exception: return jsonify(error="Username is already taken"),409
     return jsonify(token=signer.dumps({"uid":uid}),user={"id":uid,"username":name}),201
 
@@ -154,3 +160,94 @@ def demo_finish():
 if __name__=="__main__":
     init_db()
     app.run(host="0.0.0.0",port=int(os.getenv("PORT","8080")))
+
+
+# Currency and cosmetic catalog. Prices and ownership are checked server-side.
+COSMETICS = {
+    "forest_cape": {"name":"Forest Cape","slot":"cape","price":120,"description":"A green adventurer's cape."},
+    "ember_cape": {"name":"Ember Cape","slot":"cape","price":300,"description":"A warm, glowing red cape."},
+    "royal_crown": {"name":"Royal Crown","slot":"head","price":500,"description":"A small golden crown."},
+    "moon_halo": {"name":"Moon Halo","slot":"head","price":750,"description":"A pale celestial halo."},
+    "slime_buddy": {"name":"Slime Buddy","slot":"pet","price":400,"description":"A tiny companion that follows you."},
+    "pixel_aura": {"name":"Pixel Aura","slot":"aura","price":900,"description":"A shimmering pixel aura."}
+}
+
+@app.get("/api/profile")
+def profile():
+    u,e=player()
+    if e:return e
+    with db() as c:
+        cur=c.cursor()
+        cur.execute(sql("SELECT coins FROM wallets WHERE user_id=?"),(u["id"],))
+        row=asdict(cur.fetchone())
+        if not row:
+            cur.execute(sql("INSERT INTO wallets (user_id,coins) VALUES (?,0)"),(u["id"],))
+            coins=0
+        else: coins=row["coins"]
+        cur.execute(sql("SELECT cosmetic_id FROM owned_cosmetics WHERE user_id=?"),(u["id"],))
+        owned=[r["cosmetic_id"] for r in cur.fetchall()]
+        cur.execute(sql("SELECT cosmetic_id FROM equipped_cosmetics WHERE user_id=?"),(u["id"],))
+        eq=asdict(cur.fetchone())
+    return jsonify(username=u["username"],coins=coins,owned_cosmetics=owned,equipped_cosmetic=eq["cosmetic_id"] if eq else None)
+
+@app.get("/api/shop")
+def shop():
+    u,e=player()
+    if e:return e
+    return jsonify(items=[{"id":k,**v,"owned":False} for k,v in COSMETICS.items()])
+
+@app.post("/api/shop/buy")
+def buy_cosmetic():
+    u,e=player()
+    if e:return e
+    cosmetic_id=str((request.get_json(silent=True) or {}).get("cosmetic_id",""))
+    item=COSMETICS.get(cosmetic_id)
+    if not item:return jsonify(error="Cosmetic not found"),404
+    with db() as c:
+        cur=c.cursor()
+        cur.execute(sql("SELECT cosmetic_id FROM owned_cosmetics WHERE user_id=? AND cosmetic_id=?"),(u["id"],cosmetic_id))
+        if cur.fetchone():return jsonify(error="You already own this cosmetic"),409
+        cur.execute(sql("SELECT coins FROM wallets WHERE user_id=?"),(u["id"],))
+        wallet=asdict(cur.fetchone())
+        if not wallet:
+            cur.execute(sql("INSERT INTO wallets (user_id,coins) VALUES (?,0)"),(u["id"],))
+            balance=0
+        else: balance=wallet["coins"]
+        if balance<item["price"]:return jsonify(error="Not enough coins",balance=balance,price=item["price"]),409
+        cur.execute(sql("UPDATE wallets SET coins=coins-? WHERE user_id=?"),(item["price"],u["id"]))
+        cur.execute(sql("INSERT INTO owned_cosmetics (user_id,cosmetic_id) VALUES (?,?)"),(u["id"],cosmetic_id))
+        balance-=item["price"]
+    return jsonify(ok=True,cosmetic_id=cosmetic_id,coins=balance)
+
+@app.post("/api/cosmetics/equip")
+def equip_cosmetic():
+    u,e=player()
+    if e:return e
+    cosmetic_id=str((request.get_json(silent=True) or {}).get("cosmetic_id",""))
+    with db() as c:
+        cur=c.cursor()
+        cur.execute(sql("SELECT cosmetic_id FROM owned_cosmetics WHERE user_id=? AND cosmetic_id=?"),(u["id"],cosmetic_id))
+        if not cur.fetchone():return jsonify(error="You do not own this cosmetic"),403
+        cur.execute(sql("SELECT user_id FROM equipped_cosmetics WHERE user_id=?"),(u["id"],))
+        if cur.fetchone():cur.execute(sql("UPDATE equipped_cosmetics SET cosmetic_id=? WHERE user_id=?"),(cosmetic_id,u["id"]))
+        else:cur.execute(sql("INSERT INTO equipped_cosmetics (user_id,cosmetic_id) VALUES (?,?)"),(u["id"],cosmetic_id))
+    return jsonify(ok=True,equipped_cosmetic=cosmetic_id)
+
+@app.post("/api/currency/daily")
+def daily_currency():
+    u,e=player()
+    if e:return e
+    today=datetime.now(timezone.utc).date().isoformat()
+    with db() as c:
+        cur=c.cursor()
+        try:cur.execute(sql("INSERT INTO daily_claims (user_id,claim_date) VALUES (?,?)"),(u["id"],today))
+        except Exception:return jsonify(error="Daily reward already claimed",claimed=False),409
+        cur.execute(sql("SELECT coins FROM wallets WHERE user_id=?"),(u["id"],))
+        wallet=asdict(cur.fetchone())
+        if not wallet:
+            cur.execute(sql("INSERT INTO wallets (user_id,coins) VALUES (?,100)"),(u["id"],))
+            balance=100
+        else:
+            cur.execute(sql("UPDATE wallets SET coins=coins+100 WHERE user_id=?"),(u["id"],))
+            balance=wallet["coins"]+100
+    return jsonify(ok=True,reward=100,coins=balance)
