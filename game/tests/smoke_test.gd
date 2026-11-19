@@ -14,6 +14,12 @@ func _run_smoke_test() -> void:
         push_error("Account UI script failed to load")
         quit(1)
         return
+    var presence_script = load("res://scripts/discord_presence.gd")
+    var rpc_script = load("res://addons/discord_rich_presence/discord_rich_presence.gd")
+    if presence_script == null or rpc_script == null:
+        push_error("Discord Rich Presence scripts failed to load")
+        quit(1)
+        return
     var packed = load("res://scenes/main.tscn")
     if packed == null:
         push_error("Main scene failed to load")
@@ -24,6 +30,16 @@ func _run_smoke_test() -> void:
     await process_frame
     if instance.get_node_or_null("AccountAPI") == null or instance.get_node_or_null("AccountUI") == null:
         push_error("Required account nodes are missing")
+        quit(1)
+        return
+    var presence_node = instance.get_node_or_null("DiscordPresence")
+    if presence_node == null or not presence_node.has_method("update_presence"):
+        push_error("Discord Rich Presence node is not wired into the main scene")
+        quit(1)
+        return
+    presence_node.update_presence("Forest", "Smoke Test World")
+    if presence_node.current_world != "Smoke Test World":
+        push_error("Discord Rich Presence context update failed")
         quit(1)
         return
     if not instance.has_method("_serialize_world") or not instance.has_method("_apply_shared_world"):
