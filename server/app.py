@@ -217,16 +217,18 @@ def buy_cosmetic():
         cur=c.cursor()
         cur.execute(sql("SELECT cosmetic_id FROM owned_cosmetics WHERE user_id=? AND cosmetic_id=?"),(u["id"],cosmetic_id))
         if cur.fetchone():return jsonify(error="You already own this cosmetic"),409
+        cur.execute(sql("UPDATE wallets SET coins=coins-? WHERE user_id=? AND coins>=?"),(item["price"],u["id"],item["price"]))
+        if cur.rowcount==0:
+            cur.execute(sql("SELECT coins FROM wallets WHERE user_id=?"),(u["id"],))
+            wallet=asdict(cur.fetchone())
+            balance=int(wallet["coins"]) if wallet else 0
+            return jsonify(error="Not enough coins",balance=balance,price=item["price"]),409
+        cur.execute(sql("INSERT INTO owned_cosmetics (user_id,cosmetic_id) VALUES (?,?) ON CONFLICT(user_id,cosmetic_id) DO NOTHING"),(u["id"],cosmetic_id))
+        if cur.rowcount==0:
+            cur.execute(sql("UPDATE wallets SET coins=coins+? WHERE user_id=?"),(item["price"],u["id"]))
+            return jsonify(error="You already own this cosmetic"),409
         cur.execute(sql("SELECT coins FROM wallets WHERE user_id=?"),(u["id"],))
-        wallet=asdict(cur.fetchone())
-        if not wallet:
-            cur.execute(sql("INSERT INTO wallets (user_id,coins) VALUES (?,0)"),(u["id"],))
-            balance=0
-        else: balance=wallet["coins"]
-        if balance<item["price"]:return jsonify(error="Not enough coins",balance=balance,price=item["price"]),409
-        cur.execute(sql("UPDATE wallets SET coins=coins-? WHERE user_id=?"),(item["price"],u["id"]))
-        cur.execute(sql("INSERT INTO owned_cosmetics (user_id,cosmetic_id) VALUES (?,?)"),(u["id"],cosmetic_id))
-        balance-=item["price"]
+        balance=int(asdict(cur.fetchone())["coins"])
     return jsonify(ok=True,cosmetic_id=cosmetic_id,coins=balance)
 
 @app.post("/api/cosmetics/equip")
