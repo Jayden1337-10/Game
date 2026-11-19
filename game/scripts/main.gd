@@ -72,6 +72,7 @@ func _generate_world() -> void:
             if x > 280 and y == surface_y:
                 kind = "ash"
             blocks[Vector2i(x, y)] = kind
+        blocks[Vector2i(x, WORLD_HEIGHT - 1)] = "stone"
         if x % 37 == 8:
             _make_tree(x, surface_y - 1)
         if x >= 140 and x < 280 and x % 19 == 4:
@@ -290,23 +291,25 @@ func _draw() -> void:
     var right: int = mini(WORLD_WIDTH, int((camera_offset.x + view.x) / TILE) + 3)
     var top: int = maxi(0, int(camera_offset.y / TILE) - 2)
     var bottom: int = mini(WORLD_HEIGHT, int((camera_offset.y + view.y) / TILE) + 3)
-    for cell in blocks:
-        if cell.x < left or cell.x > right or cell.y < top or cell.y > bottom: continue
-        var kind: String = blocks[cell]
-        var color := Color("#4f9b45")
-        if kind == "dirt": color = Color("#8b6546")
-        elif kind == "stone": color = Color("#737b83")
-        elif kind == "wood": color = Color("#76502e")
-        elif kind == "leaves": color = Color("#347747")
-        elif kind == "copper": color = Color("#b86d43")
-        elif kind == "ash": color = Color("#655d68")
-        elif kind == "mushroom": color = Color("#d6c3a0")
-        elif kind == "mushroom_cap": color = Color("#9a5ca7")
-        if cell.x >= 140 and cell.x < 280 and kind == "grass": color = Color("#739b70")
-        if cell.x >= 280 and kind == "grass": color = Color("#a27b62")
-        var rect := Rect2(Vector2(cell * TILE) - camera_offset, Vector2(TILE, TILE))
-        draw_rect(rect, color)
-        draw_rect(rect, color.darkened(0.2), false, 1.0)
+    for x in range(left, right + 1):
+        for y in range(top, bottom + 1):
+            var cell := Vector2i(x, y)
+            if not blocks.has(cell): continue
+            var kind: String = blocks[cell]
+            var color := Color("#4f9b45")
+            if kind == "dirt": color = Color("#8b6546")
+            elif kind == "stone": color = Color("#737b83")
+            elif kind == "wood": color = Color("#76502e")
+            elif kind == "leaves": color = Color("#347747")
+            elif kind == "copper": color = Color("#b86d43")
+            elif kind == "ash": color = Color("#655d68")
+            elif kind == "mushroom": color = Color("#d6c3a0")
+            elif kind == "mushroom_cap": color = Color("#9a5ca7")
+            if cell.x >= 140 and cell.x < 280 and kind == "grass": color = Color("#739b70")
+            if cell.x >= 280 and kind == "grass": color = Color("#a27b62")
+            var rect := Rect2(Vector2(cell * TILE) - camera_offset, Vector2(TILE, TILE))
+            draw_rect(rect, color)
+            draw_rect(rect, color.darkened(0.2), false, 1.0)
     for remote_id in remote_players:
         var remote_pos: Vector2 = remote_players[remote_id] - camera_offset
         draw_rect(Rect2(remote_pos - Vector2(10, 24), Vector2(20, 36)), Color("#75a9df"))
