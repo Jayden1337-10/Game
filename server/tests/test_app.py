@@ -72,3 +72,19 @@ def test_auth_required_and_invalid_payloads(client):
     headers = auth(token)
     assert client.post("/api/shop/buy", headers=headers, json={"cosmetic_id": "not-real"}).status_code == 404
     assert client.put("/api/worlds/nope", headers=headers, json={"data": []}).status_code == 400
+
+
+def test_gameplay_rewards_are_idempotent_and_capped(client):
+    token = register(client)
+    headers = auth(token)
+    first = client.post("/api/currency/reward", headers=headers, json={"reward_id": "reward-unique-001", "source": "slime_kill"})
+    assert first.status_code == 200
+    assert first.get_json()["coins"] == 5
+    duplicate = client.post("/api/currency/reward", headers=headers, json={"reward_id": "reward-unique-001", "source": "slime_kill"})
+    assert duplicate.status_code == 409
+    for index in range(39):
+        response = client.post("/api/currency/reward", headers=headers, json={"reward_id": f"slime-reward-{index:04d}", "source": "slime_kill"})
+        assert response.status_code == 200
+    limited = client.post("/api/currency/reward", headers=headers, json={"reward_id": "slime-reward-over-limit", "source": "slime_kill"})
+    assert limited.status_code == 429
+    assert client.get("/api/profile", headers=headers).get_json()["coins"] == 200
