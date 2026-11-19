@@ -340,7 +340,7 @@ def dev_grant():
         wallet=asdict(cur.fetchone())
         cur.execute(sql("SELECT item_id,quantity FROM dev_inventory WHERE user_id=?"),(u["id"],))
         items={row["item_id"]:row["quantity"] for row in cur.fetchall()}
-    return jsonify(ok=True,coins=wallet["coins"] if wallet else 0,dev_inventory=items,cosmetic_id=cosmetic_id or None)
+    return jsonify(ok=True,coins=wallet["coins"] if wallet else 0,dev_inventory=items,item_id=item_id,granted_quantity=quantity,cosmetic_id=cosmetic_id or None)
 
 
 # Lightweight polling-based multiplayer relay. Clients poll events after their last cursor.
