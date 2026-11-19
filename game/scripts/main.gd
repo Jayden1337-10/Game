@@ -12,15 +12,19 @@ var velocity := Vector2.ZERO
 var camera_offset := Vector2.ZERO
 var blocks: Dictionary = {}
 var inventory := {"grass": 0, "dirt": 24, "stone": 0, "wood": 0, "gel": 0, "copper": 0}
-var equipment := {"weapon": "Wooden Sword", "armor": "Cloth Tunic", "accessory": "None"}
+var equipment := {"weapon": "Wooden Sword", "head": "None", "chest": "Cloth Tunic", "legs": "None", "accessory": "None"}
 var recipes := {
     "Wooden Sword": {"wood": 8},
     "Wooden Helmet": {"wood": 12},
     "Wooden Chestplate": {"wood": 20},
     "Wooden Boots": {"wood": 10},
-    "Copper Blade": {"copper": 12, "wood": 4}
+    "Copper Blade": {"copper": 12, "wood": 4},
+    "Copper Helmet": {"copper": 10},
+    "Copper Chestplate": {"copper": 18},
+    "Copper Boots": {"copper": 12},
+    "Lucky Charm": {"copper": 6, "gel": 8}
 }
-var craft_names := ["Wooden Sword", "Wooden Helmet", "Wooden Chestplate", "Wooden Boots", "Copper Blade"]
+var craft_names := ["Wooden Sword", "Wooden Helmet", "Wooden Chestplate", "Wooden Boots", "Copper Blade", "Copper Helmet", "Copper Chestplate", "Copper Boots", "Lucky Charm"]
 var enemies: Array[Dictionary] = []
 var coins := 0
 var selected_slot := 0
@@ -189,8 +193,14 @@ func _craft(item: String) -> void:
         inventory[material] -= cost[material]
     if item == "Wooden Sword" or item == "Copper Blade":
         equipment["weapon"] = item
-    elif item.begins_with("Wooden"):
-        equipment["armor"] = item
+    elif item.ends_with("Helmet"):
+        equipment["head"] = item
+    elif item.ends_with("Chestplate"):
+        equipment["chest"] = item
+    elif item.ends_with("Boots"):
+        equipment["legs"] = item
+    elif item == "Lucky Charm":
+        equipment["accessory"] = item
     status_text = "Crafted " + item
 
 func _craft_cosmetic(item: String) -> void:
@@ -287,5 +297,5 @@ func _draw() -> void:
         draw_rect(Rect2(Vector2(550, 360), Vector2(360, 150)), Color("#171d20"))
         draw_string(ThemeDB.fallback_font, Vector2(570, 390), "EQUIPMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("#f2e7ca"))
         draw_string(ThemeDB.fallback_font, Vector2(570, 420), "Weapon: " + equipment["weapon"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
-        draw_string(ThemeDB.fallback_font, Vector2(570, 446), "Armor: " + equipment["armor"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
-        draw_string(ThemeDB.fallback_font, Vector2(570, 472), "Accessory: " + equipment["accessory"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+        draw_string(ThemeDB.fallback_font, Vector2(570, 446), "Head: " + equipment["head"] + " | Chest: " + equipment["chest"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+        draw_string(ThemeDB.fallback_font, Vector2(570, 472), "Legs: " + equipment["legs"] + " | Accessory: " + equipment["accessory"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
