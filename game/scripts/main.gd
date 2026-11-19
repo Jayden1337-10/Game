@@ -139,7 +139,7 @@ func _unhandled_input(event: InputEvent) -> void:
         if event.keycode == KEY_C: show_crafting = not show_crafting
         if event.keycode == KEY_I: show_inventory = not show_inventory
         if event.keycode == KEY_M: show_cosmetics = not show_cosmetics
-        if show_crafting and event.keycode >= KEY_1 and event.keycode <= KEY_5:
+        if show_crafting and event.keycode >= KEY_1 and event.keycode <= KEY_9 and event.keycode - KEY_1 < craft_names.size():
             _craft(craft_names[event.keycode - KEY_1])
         if show_cosmetics and event.keycode >= KEY_1 and event.keycode <= KEY_3:
             _craft_cosmetic(["Leaf Crown", "Wooden Mask", "Slime Hat"][event.keycode - KEY_1])
@@ -279,11 +279,11 @@ func _draw() -> void:
         draw_rect(Rect2(Vector2(x, view.y - 66), Vector2(42, 42)), Color("#3a4146") if i != selected_slot else Color("#d2ae61"))
         draw_string(ThemeDB.fallback_font, Vector2(x + 8, view.y - 39), str(inventory.get(hotbar[i], 0)), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
     if show_crafting:
-        draw_rect(Rect2(Vector2(550, 100), Vector2(360, 240)), Color("#171d20"))
+        draw_rect(Rect2(Vector2(550, 100), Vector2(390, 340)), Color("#171d20"))
         draw_string(ThemeDB.fallback_font, Vector2(570, 130), "CRAFTING (press C to close)", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("#f2e7ca"))
         for i in range(craft_names.size()):
-            draw_string(ThemeDB.fallback_font, Vector2(570, 164 + i * 30), "%d. %s" % [i + 1, craft_names[i]], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
-        draw_string(ThemeDB.fallback_font, Vector2(570, 320), "Press 1-5 to craft while this panel is open", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#c8d6df"))
+            draw_string(ThemeDB.fallback_font, Vector2(570, 160 + i * 27), "%d. %s" % [i + 1, craft_names[i]], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+        draw_string(ThemeDB.fallback_font, Vector2(570, 420), "Press 1-9 to craft while this panel is open", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#c8d6df"))
     if show_cosmetics:
         draw_rect(Rect2(Vector2(550, 100), Vector2(390, 270)), Color("#171d20"))
         draw_string(ThemeDB.fallback_font, Vector2(570, 130), "COSMETIC STALL (M to close)", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("#f2e7ca"))
