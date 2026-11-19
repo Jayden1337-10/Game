@@ -26,6 +26,7 @@ var recipes := {
 }
 var craft_names := ["Wooden Sword", "Wooden Helmet", "Wooden Chestplate", "Wooden Boots", "Copper Blade", "Copper Helmet", "Copper Chestplate", "Copper Boots", "Lucky Charm"]
 var enemies: Array[Dictionary] = []
+var remote_players: Dictionary = {}
 var coins := 0
 var selected_slot := 0
 var hotbar := ["dirt", "stone", "wood", "grass"]
@@ -50,6 +51,9 @@ func _ready() -> void:
         world_seed = randi()
         _generate_world()
         _spawn_enemies()
+    var account_ui = get_node_or_null("AccountUI")
+    if account_ui != null:
+        account_ui.world_event_received.connect(_on_world_event)
     queue_redraw()
 
 func _generate_world() -> void:
@@ -128,6 +132,15 @@ func _physics_process(delta: float) -> void:
     var region := int(player_pos.x / TILE)
     biome = "Forest" if region < 140 else ("Mushroom Fields" if region < 280 else "Ashlands")
     queue_redraw()
+
+func _on_world_event(event_data: Dictionary) -> void:
+    var payload: Dictionary = event_data.get("event", {})
+    if payload.get("type", "") != "player_state":
+        return
+    var remote_id := str(event_data.get("user_id", ""))
+    if remote_id.is_empty():
+        return
+    remote_players[remote_id] = Vector2(float(payload.get("x", 0.0)), float(payload.get("y", 0.0)))
 
 func _update_enemies(delta: float) -> void:
     for enemy in enemies:
@@ -269,6 +282,10 @@ func _draw() -> void:
         var rect := Rect2(Vector2(cell * TILE) - camera_offset, Vector2(TILE, TILE))
         draw_rect(rect, color)
         draw_rect(rect, color.darkened(0.2), false, 1.0)
+    for remote_id in remote_players:
+        var remote_pos: Vector2 = remote_players[remote_id] - camera_offset
+        draw_rect(Rect2(remote_pos - Vector2(10, 24), Vector2(20, 36)), Color("#75a9df"))
+        draw_string(ThemeDB.fallback_font, remote_pos + Vector2(-28, -30), "Guest", HORIZONTAL_ALIGNMENT_LEFT, 60, 10, Color.WHITE)
     for enemy in enemies:
         var ep: Vector2 = enemy["pos"] - camera_offset
         var enemy_color := Color("#65c95c") if enemy["kind"] == "Slime" else (Color("#b28ad1") if enemy["kind"] == "Fungus" else Color("#b76d55"))
