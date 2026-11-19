@@ -26,6 +26,7 @@ var dev_quantity: SpinBox
 var dev_coins: SpinBox
 var dev_cosmetic_select: OptionButton
 var dev_access := false
+var demo_unban_input: LineEdit
 
 func _ready() -> void:
     _build_ui()
@@ -177,6 +178,8 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
         dev_access = code == 200 and bool(data.get("enabled", false))
         dev_panel.visible = dev_access
         dev_status_label.text = "Developer access enabled" if dev_access else "Developer access disabled"
+    elif path == "/api/admin/demo-unban":
+        dev_status_label.text = "Demo test ban cleared" if code == 200 and data.get("cleared", false) else str(data.get("error", "No demo ban was cleared"))
     elif path == "/api/dev/grant":
         if code == 200:
             var game = get_node_or_null("..")
@@ -393,6 +396,17 @@ func _build_dev_panel() -> void:
     dev_status_label.text = "Sign in with an allowlisted developer account"
     dev_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     body.add_child(dev_status_label)
+    body.add_child(_dev_label("Clear reversible demo ban by username"))
+    demo_unban_input = LineEdit.new()
+    demo_unban_input.placeholder_text = "Forgotten World username"
+    body.add_child(demo_unban_input)
+    var unban_button := Button.new()
+    unban_button.text = "Clear demo test ban"
+    unban_button.pressed.connect(func():
+        if dev_access and not demo_unban_input.text.strip_edges().is_empty():
+            api.admin_clear_demo_ban(demo_unban_input.text.strip_edges())
+    )
+    body.add_child(unban_button)
 
 func _dev_label(value: String) -> Label:
     var label := Label.new()
