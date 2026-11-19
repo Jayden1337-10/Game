@@ -1,71 +1,77 @@
 # Forgotten World
 
-A Terraria-inspired 2D sandbox RPG prototype for Windows, with offline gameplay and a Wispbyte-ready account/world service.
+A Terraria-inspired 2D sandbox RPG prototype built with Godot 4 and a Flask account/world service.
 
-## Repository layout
-- `game/`: Godot 4 client.
-- `server/`: Flask API for accounts, worlds, currency, cosmetics and multiplayer event relay.
+## Repository
+- `game/`: Godot client.
+- `server/`: Flask API, SQLite/PostgreSQL persistence and automated tests.
 - `executor-demo/`: opt-in account-scoped moderation demonstration.
-- `.github/workflows/`: automated Windows build workflow.
+- `.github/workflows/`: backend regression tests and Windows export checks.
 
-## Current game prototype
-- Procedurally generated side-scrolling world with Forest, Mushroom Fields and Ashlands regions, underground caves, copper ore, trees and stone ruins.
-- Pixel-style terrain and character rendering using crisp geometric shapes.
+## Gameplay
+- Procedural Forest, Mushroom Fields and Ashlands regions, caves, copper ore, trees and ruins.
 - Movement, jumping, mining, block placement and a four-slot hotbar.
-- Slime enemies, basic contact damage, melee attacks, health and coin drops.
-- Inventory materials, wooden/copper weapons, basic armor recipes and crafting panel.
-- Cosmetic stall: craft Leaf Crown, Wooden Mask and Slime Hat, or buy Forest Cape, Royal Crown and Slime Buddy with coins.
-- Basic cosmetic visuals on the player.
+- Slime, Fungus and Ash Slime enemies, basic enemy pursuit, contact damage and melee combat.
+- Inventory materials, wooden/copper weapons, armor slots, accessories and crafting.
+- Local cosmetics: craftable Leaf Crown, Wooden Mask and Slime Hat; Forest Cape, Royal Crown and Slime Buddy.
+- Local world autosave every 30 seconds to `user://world_save.json`.
+- Remote player display and tile-change relay in shared worlds.
 
 ## Controls
-- A/D or arrow keys: move
-- Space: jump
-- Left click: mine nearby blocks
-- Right click: place the selected hotbar block
-- 1-4: select hotbar slot
-- J: melee attack
-- C: crafting panel; use 1-9 to craft
-- I: equipment panel
-- M: cosmetic stall; 1-3 craft cosmetics and 4-6 buy cosmetics
+- A/D or arrow keys: move.
+- Space: jump.
+- Left click: mine nearby blocks.
+- Right click: place the selected hotbar block.
+- 1-4: select hotbar slot.
+- J: melee attack.
+- C: crafting panel; use 1-9 to craft.
+- I: equipment panel.
+- M: local cosmetic crafting stall.
+- U: account, persistent wallet, online cosmetic shop and world-sharing panel.
 
-## Account API and economy
-Run the API locally:
+## Run the account server
+Local development:
 ```bash
 cd server
 python -m pip install -r requirements.txt
 python app.py
 ```
-Set `DATABASE_URL` for PostgreSQL in production. Local development uses SQLite if it is empty. Set a strong `SECRET_KEY` and restrict `CORS_ORIGINS` before public deployment.
+The local default uses SQLite. For production, set `DATABASE_URL` to PostgreSQL, set a long random `SECRET_KEY`, and set `CORS_ORIGINS` to the origins you actually need.
 
 Wispbyte startup command:
 ```bash
 pip install -U --prefix .local -r server/requirements.txt
 /usr/local/bin/python /home/container/server/app.py
 ```
-Configure `PORT`, `SECRET_KEY`, and `DATABASE_URL` in the Wispbyte environment panel.
+Set `PORT`, `SECRET_KEY`, and `DATABASE_URL` in the Wispbyte environment panel. The application initializes its schema on import, so Gunicorn can also load `app:app` from the server directory.
 
-Economy endpoints:
-- `GET /api/profile`: coin balance, owned cosmetics and equipped cosmetic.
-- `GET /api/shop`: cosmetic catalogue and prices.
-- `POST /api/shop/buy`: server-validated cosmetic purchase.
-- `POST /api/cosmetics/equip`: equip a cosmetic the account owns.
+## Accounts and persistent economy
+- Register and log in from the in-game panel (U).
+- The session token and server URL are saved locally in `user://account.cfg`.
+- `GET /api/profile`: wallet balance, owned cosmetics and equipped cosmetic.
+- `GET /api/shop`: catalogue with current ownership.
+- `POST /api/shop/buy`: atomic, server-validated cosmetic purchase.
+- `POST /api/cosmetics/equip`: equip an owned cosmetic.
 - `POST /api/currency/daily`: claim 100 coins once per UTC day.
+- `POST /api/currency/reward`: claim a fixed 5-coin slime defeat reward, with duplicate protection and a 200-coin daily gameplay reward cap.
 
-The game-side cosmetic stall is currently a local prototype economy; the Godot API client exposes the persistent account/shop methods, but the login and shop UI still need to be connected to it. Server-side purchases and balances are authoritative when using the API.
+Online enemy rewards update the account wallet; offline play uses the local save's coin balance. The online shop is persistent and separate from the local crafting stall.
 
-## World sharing and multiplayer foundation
-- Owners can create invite codes at `POST /api/worlds/<world_id>/invite`.
-- Players join with `POST /api/worlds/join` and the invite code.
-- Members can send and poll small world events at `/api/worlds/<world_id>/events`.
-- `game/scripts/account_api.gd` provides Godot request helpers for login, profile, shop, invites and event polling.
+## Shared worlds
+- Create a world and invite code in the in-game U panel.
+- Friends register/log in, enter the invite code and join.
+- The client relays player positions and block edits, and periodically uploads a compact world snapshot.
+- World data and memberships are stored by the server.
 
-This is a polling-based event relay foundation, not finished real-time multiplayer. The client does not yet automatically replicate player movement, combat, block changes or enemy state, and dedicated server authority/anti-cheat still needs implementation.
+This is a small polling-based multiplayer prototype, not a production authoritative game server. Enemy health, combat outcomes, and anti-cheat validation are not yet authoritative or synchronised. Avoid treating it as secure against modified clients.
+
+## Automated checks
+- Backend tests cover registration/login, auth requirements, daily currency, capped rewards, cosmetic purchases/equipping, world invites, shared saves and event delivery.
+- GitHub Actions runs the backend tests and a Godot Windows export check on pushes.
+- A successful backend test run has been observed. The Windows export must complete successfully before a tested executable can be claimed.
 
 ## Discord Rich Presence
-A compatible Godot Discord RPC extension and a registered Discord application ID are still required. The current presence script remains a stub.
+Discord Rich Presence still needs a compatible Godot RPC extension and a registered Discord application ID.
 
-## Build status
-Open `game/project.godot` in Godot 4.3+. The Windows export workflow is configured but must pass a real GitHub Actions build before the executable can be considered tested. GDScript has not yet been compiled in the Godot editor in this environment.
-
-## Account safety
-The opt-in demo client only targets the Forgotten World account signed into it. It does not inject into processes, inspect other programs, modify Windows or affect Discord accounts. Use a disposable test account.
+## Demo client
+The opt-in demo client affects only the Forgotten World account signed into it. It does not inject into processes, inspect other programs, modify Windows or affect Discord. Use a disposable test account.
