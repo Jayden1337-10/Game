@@ -19,10 +19,18 @@ var active_world_name := "Solo World"
 var event_cursor := ""
 var sync_timer: Timer
 var save_elapsed := 0.0
+var dev_panel: PanelContainer
+var dev_status_label: Label
+var dev_item_select: OptionButton
+var dev_quantity: SpinBox
+var dev_coins: SpinBox
+var dev_cosmetic_select: OptionButton
+var dev_access := false
 
 func _ready() -> void:
     _build_ui()
     api.api_response.connect(_on_api_response)
+    _build_dev_panel()
     sync_timer = Timer.new()
     sync_timer.wait_time = 0.3
     sync_timer.timeout.connect(_sync_world)
@@ -36,6 +44,8 @@ func _ready() -> void:
             status_label.text = "Saved session loaded"
             api.load_profile()
             api.load_cosmetic_shop()
+            api.load_dev_status()
+            api.load_dev_status()
 
 func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_U:
@@ -164,7 +174,29 @@ func _create_world() -> void:
     api.create_world(world_name_input.text.strip_edges(), "dedicated")
 
 func _on_api_response(path: String, code: int, data: Dictionary) -> void:
-    if path == "/api/login" or path == "/api/register":
+    if path == "/api/dev/status":
+        dev_access = code == 200 and bool(data.get("enabled", false))
+        dev_panel.visible = dev_access
+        dev_status_label.text = "Developer access enabled" if dev_access else "Developer access disabled"
+    elif path == "/api/dev/grant":
+        if code == 200:
+            var game = get_node_or_null("..")
+            if game != null:
+                game.coins = int(data.get("coins", game.coins))
+                var granted_items: Dictionary = data.get("dev_inventory", {})
+                for item_id in granted_items:
+                    game.inventory[item_id] = int(granted_items[item_id])
+                game._save_game()
+                if not str(data.get("cosmetic_id", "")).is_empty():
+                    var cosmetic_names := {"forest_cape":"Forest Cape", "ember_cape":"Ember Cape", "royal_crown":"Royal Crown", "moon_halo":"Moon Halo", "slime_buddy":"Slime Buddy", "pixel_aura":"Pixel Aura"}
+                    var cosmetic_name: String = cosmetic_names.get(str(data.get("cosmetic_id")), "")
+                    if not cosmetic_name.is_empty() and not cosmetic_name in game.account_owned_cosmetics:
+                        game.account_owned_cosmetics.append(cosmetic_name)
+            dev_status_label.text = "Grant applied to your account"
+            api.load_profile()
+        else:
+            dev_status_label.text = str(data.get("error", "Grant failed"))
+    elif path == "/api/login" or path == "/api/register":
         if code == 200 or code == 201:
             api.auth_token = str(data.get("token", ""))
             var config := ConfigFile.new()
@@ -305,3 +337,73 @@ func is_signed_in() -> bool:
 func claim_enemy_reward() -> void:
     var reward_id := str(Time.get_ticks_usec()) + "-" + str(randi())
     api.claim_enemy_reward(reward_id)
+
+
+func _build_dev_panel() -> void:
+    dev_panel = PanelContainer.new()
+    dev_panel.position = Vector2(850, 110)
+    dev_panel.custom_minimum_size = Vector2(360, 390)
+    dev_panel.visible = false
+    add_child(dev_panel)
+    var body := VBoxContainer.new()
+    body.add_theme_constant_override("separation", 9)
+    dev_panel.add_child(body)
+    var title := Label.new()
+    title.text = "DEVELOPER TOOLS  /  F2"
+    body.add_child(title)
+    var close := Button.new()
+    close.text = "Close"
+    close.pressed.connect(func(): dev_panel.visible = false)
+    body.add_child(close)
+    dev_item_select = OptionButton.new()
+    for item_id in ["grass", "dirt", "stone", "wood", "gel", "copper", "crystal", "ice", "sand", "relic", "herb", "rune", "leaves"]:
+        dev_item_select.add_item(item_id.capitalize())
+        dev_item_select.set_item_metadata(dev_item_select.item_count - 1, item_id)
+    body.add_child(_dev_label("Item to grant"))
+    body.add_child(dev_item_select)
+    dev_quantity = SpinBox.new()
+    dev_quantity.min_value = 1
+    dev_quantity.max_value = 999
+    dev_quantity.value = 25
+    body.add_child(_dev_label("Item quantity"))
+    body.add_child(dev_quantity)
+    dev_coins = SpinBox.new()
+    dev_coins.min_value = 0
+    dev_coins.max_value = 100000
+    dev_coins.step = 50
+    dev_coins.value = 0
+    body.add_child(_dev_label("Coins to add"))
+    body.add_child(dev_coins)
+    dev_cosmetic_select = OptionButton.new()
+    dev_cosmetic_select.add_item("No cosmetic")
+    dev_cosmetic_select.set_item_metadata(0, "")
+    for cosmetic_id in ["forest_cape", "ember_cape", "royal_crown", "moon_halo", "slime_buddy", "pixel_aura"]:
+        dev_cosmetic_select.add_item(cosmetic_id.replace("_", " ").capitalize())
+        dev_cosmetic_select.set_item_metadata(dev_cosmetic_select.item_count - 1, cosmetic_id)
+    body.add_child(_dev_label("Cosmetic unlock"))
+    body.add_child(dev_cosmetic_select)
+    var grant := Button.new()
+    grant.text = "Apply test grant"
+    grant.pressed.connect(_submit_dev_grant)
+    body.add_child(grant)
+    dev_status_label = Label.new()
+    dev_status_label.text = "Sign in with an allowlisted developer account"
+    dev_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    body.add_child(dev_status_label)
+
+func _dev_label(value: String) -> Label:
+    var label := Label.new()
+    label.text = value
+    return label
+
+func _submit_dev_grant() -> void:
+    if not dev_access or api.auth_token.is_empty():
+        dev_status_label.text = "Developer access is not enabled"
+        return
+    var item_id := str(dev_item_select.get_item_metadata(dev_item_select.selected))
+    var cosmetic_id := str(dev_cosmetic_select.get_item_metadata(dev_cosmetic_select.selected))
+    api.dev_grant(item_id, int(dev_quantity.value), int(dev_coins.value), cosmetic_id)
+
+func _input(event: InputEvent) -> void:
+    if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F2 and dev_access:
+        dev_panel.visible = not dev_panel.visible
