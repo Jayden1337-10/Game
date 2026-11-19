@@ -49,9 +49,13 @@ func _build_ui() -> void:
     panel.custom_minimum_size = Vector2(390, 500)
     panel.visible = false
     add_child(panel)
+    var scroll := ScrollContainer.new()
+    scroll.custom_minimum_size = Vector2(390, 500)
+    panel.add_child(scroll)
     var outer := VBoxContainer.new()
+    outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     outer.add_theme_constant_override("separation", 7)
-    panel.add_child(outer)
+    scroll.add_child(outer)
 
     var heading := Label.new()
     heading.text = "FORGOTTEN WORLD ACCOUNT"
