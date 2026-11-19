@@ -24,7 +24,7 @@ A Terraria-inspired 2D sandbox RPG prototype for Windows, with offline gameplay 
 - Right click: place the selected hotbar block
 - 1-4: select hotbar slot
 - J: melee attack
-- C: crafting panel; use 1-5 to craft
+- C: crafting panel; use 1-9 to craft
 - I: equipment panel
 - M: cosmetic stall; 1-3 craft cosmetics and 4-6 buy cosmetics
 
