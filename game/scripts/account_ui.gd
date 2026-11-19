@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+signal world_event_received(event: Dictionary)
+
 @onready var api: ForgottenWorldAPI = get_node("../AccountAPI")
 
 var panel: PanelContainer
@@ -12,10 +14,16 @@ var shop_list: VBoxContainer
 var world_name_input: LineEdit
 var invite_input: LineEdit
 var active_world_id := ""
+var event_cursor := ""
+var sync_timer: Timer
 
 func _ready() -> void:
     _build_ui()
     api.api_response.connect(_on_api_response)
+    sync_timer = Timer.new()
+    sync_timer.wait_time = 0.3
+    sync_timer.timeout.connect(_sync_world)
+    add_child(sync_timer)
     var config := ConfigFile.new()
     if config.load("user://account.cfg") == OK:
         api.base_url = str(config.get_value("account", "server_url", api.base_url))
@@ -181,6 +189,8 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
     elif path == "/api/worlds":
         if code == 201:
             active_world_id = str(data.get("id", ""))
+            event_cursor = ""
+            sync_timer.start()
             status_label.text = "World created: " + active_world_id
             api.create_world_invite(active_world_id)
     elif path.ends_with("/invite"):
@@ -189,9 +199,17 @@ func _on_api_response(path: String, code: int, data: Dictionary) -> void:
             status_label.text = "Invite code created. Share it with friends."
         else:
             status_label.text = str(data.get("error", "Invite creation failed"))
+    elif path.begins_with("/api/worlds/") and path.contains("/events?after="):
+        if code == 200:
+            for event_data in data.get("events", []):
+                if event_data is Dictionary:
+                    event_cursor = str(event_data.get("created_at", event_cursor))
+                    world_event_received.emit(event_data)
     elif path == "/api/worlds/join":
         if code == 200:
             active_world_id = str(data.get("world", {}).get("id", ""))
+            event_cursor = ""
+            sync_timer.start()
             status_label.text = "Joined world " + str(data.get("world", {}).get("name", ""))
         else:
             status_label.text = str(data.get("error", "Could not join world"))
@@ -216,3 +234,14 @@ func _populate_shop(items: Array) -> void:
             button.pressed.connect(func(): api.buy_cosmetic(cosmetic_id))
         row.add_child(button)
         shop_list.add_child(row)
+
+
+func _sync_world() -> void:
+    if active_world_id.is_empty() or api.auth_token.is_empty():
+        return
+    var game := get_node_or_null("..")
+    if game == null:
+        return
+    var position: Vector2 = game.player_pos
+    api.send_world_event(active_world_id, {"type": "player_state", "x": position.x, "y": position.y})
+    api.poll_world_events(active_world_id, event_cursor)
